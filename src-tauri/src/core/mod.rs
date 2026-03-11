@@ -4,4 +4,5 @@ pub mod db;
 pub mod embedding;
 pub mod error;
 pub mod search;
+pub mod vault;
 pub mod watcher;

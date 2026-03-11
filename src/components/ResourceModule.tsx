@@ -1,52 +1,47 @@
 import { useState } from "react";
-import { FileText, Search } from "lucide-react";
+import type { NoteEntry } from "@/services/tauri.ts";
 
-interface Resource {
-  title: string;
-  date: string;
+interface Props {
+  notes: NoteEntry[];
+  onOpen: (note: NoteEntry) => void;
 }
 
-export function ResourceModule() {
-  const [search, setSearch] = useState("");
-
-  const resources: Resource[] = [
-    { title: "Fog of War Concept", date: "2h ago" },
-    { title: "React Context API", date: "yesterday" },
-    { title: "Rust Ownership model", date: "3 days ago" },
-  ];
+export function ResourceModule({ notes, onOpen }: Props) {
+  const [open, setOpen] = useState(true);
 
   return (
-    <div className="flex flex-1 flex-col gap-2 p-3 border-b border-zinc-200 dark:border-zinc-800 overflow-hidden">
-      <div className="flex items-center justify-between text-zinc-500 dark:text-zinc-400 mb-1">
-        <div className="flex items-center gap-2 font-medium text-xs uppercase tracking-wider">
-          <FileText size={14} />
-          <span>Resources</span>
-        </div>
-      </div>
-      
-      <div className="relative">
-        <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-400" />
-        <input 
-          type="text" 
-          placeholder="Search semantic vault..." 
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-md py-1.5 pl-8 pr-3 text-sm text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:ring-1 focus:ring-amber-500 transition-shadow"
-        />
-      </div>
+    <section>
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between px-2 py-1 group"
+      >
+        <h3 className="text-[10px] font-bold text-slate-500 dark:text-slate-600 tracking-[0.2em] uppercase">
+          Resource Notes
+          <span className="ml-1.5 text-[9px] opacity-60">({notes.length})</span>
+        </h3>
+        <span className={`material-symbols-outlined text-sm text-slate-500 transition-transform duration-200 ${open ? "rotate-180" : ""}`}>
+          expand_more
+        </span>
+      </button>
 
-      <div className="flex-1 overflow-y-auto no-scrollbar flex flex-col gap-1 mt-1">
-        {resources.map((res, i) => (
-          <button key={i} className="text-left group flex flex-col p-2 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800/50 transition-colors">
-            <span className="text-sm font-medium text-zinc-700 dark:text-zinc-200 truncate group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
-              {res.title}
-            </span>
-            <span className="text-xs text-zinc-400 dark:text-zinc-500">
-              {res.date}
-            </span>
-          </button>
-        ))}
-      </div>
-    </div>
+      {open && (
+        <div className="space-y-0.5 mt-1">
+          {notes.length === 0 ? (
+            <p className="px-2 text-[11px] text-slate-600 italic">No resource notes yet.</p>
+          ) : (
+            notes.map((note, i) => (
+              <div
+                key={i}
+                onClick={() => onOpen(note)}
+                className="flex items-center gap-3 p-2 rounded cursor-pointer transition-all hover:bg-slate-200 dark:hover:bg-white/5 group"
+              >
+                <span className="material-symbols-outlined text-lg text-slate-500 group-hover:text-primary shrink-0">token</span>
+                <span className="text-sm font-medium truncate">{note.name}</span>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+    </section>
   );
 }

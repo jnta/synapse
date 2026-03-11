@@ -1,25 +1,47 @@
-import { Sunrise, Plus } from "lucide-react";
+import { useState } from "react";
+import type { NoteEntry } from "@/services/tauri.ts";
 
-export function DailyModule() {
+interface Props {
+  notes: NoteEntry[];
+  onOpen: (note: NoteEntry) => void;
+}
+
+export function DailyModule({ notes, onOpen }: Props) {
+  const [open, setOpen] = useState(true);
+
   return (
-    <div className="flex flex-col gap-2 p-3 border-b border-zinc-200 dark:border-zinc-800">
-      <div className="flex items-center justify-between text-zinc-500 dark:text-zinc-400">
-        <div className="flex items-center gap-2 font-medium text-xs uppercase tracking-wider">
-          <Sunrise size={14} />
-          <span>Daily</span>
+    <section>
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between px-2 py-1 group"
+      >
+        <h3 className="text-[10px] font-bold text-slate-500 dark:text-slate-600 tracking-[0.2em] uppercase">
+          Daily Notes
+          <span className="ml-1.5 text-[9px] opacity-60">({notes.length})</span>
+        </h3>
+        <span className={`material-symbols-outlined text-sm text-slate-500 transition-transform duration-200 ${open ? "rotate-180" : ""}`}>
+          expand_more
+        </span>
+      </button>
+
+      {open && (
+        <div className="space-y-0.5 mt-1">
+          {notes.length === 0 ? (
+            <p className="px-2 text-[11px] text-slate-600 italic">No daily notes yet.</p>
+          ) : (
+            notes.map((note, i) => (
+              <div
+                key={i}
+                onClick={() => onOpen(note)}
+                className="flex items-center gap-3 p-2 rounded cursor-pointer transition-all hover:bg-slate-200 dark:hover:bg-white/5 group"
+              >
+                <span className="material-symbols-outlined text-lg text-slate-500 group-hover:text-primary shrink-0">calendar_today</span>
+                <span className="text-sm font-medium truncate">{note.name}</span>
+              </div>
+            ))
+          )}
         </div>
-        <button className="hover:text-amber-600 dark:hover:text-amber-400 transition-colors">
-          <Plus size={14} />
-        </button>
-      </div>
-      <div className="flex flex-col gap-1 text-sm">
-        <button className="text-left px-2 py-1.5 rounded-md bg-amber-100/50 text-amber-900 dark:bg-amber-900/20 dark:text-amber-200 font-medium truncate">
-          2026-03-11.md
-        </button>
-        <button className="text-left px-2 py-1.5 text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800/50 rounded-md truncate transition-colors">
-          2026-03-10.md
-        </button>
-      </div>
-    </div>
+      )}
+    </section>
   );
 }

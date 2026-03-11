@@ -1,38 +1,45 @@
-import { DailyModule } from "./DailyModule";
-import { ResourceModule } from "./ResourceModule";
-import { ProjectModule } from "./ProjectModule";
-import { useTheme } from "../ThemeContext";
-import { Moon, Sun, Settings } from "lucide-react";
+import { useEffect, useState } from "react";
+import { listVaultNotes } from "@/services/tauri.ts";
+import { DailyModule } from "@/components/DailyModule.tsx";
+import { ResourceModule } from "@/components/ResourceModule.tsx";
+import { ProjectModule } from "@/components/ProjectModule.tsx";
+import type { NoteEntry, VaultNotes } from "@/services/tauri.ts";
 
-export function TheTopography() {
-  const { theme, toggleTheme } = useTheme();
+interface Props {
+  onOpen: (note: NoteEntry) => void;
+}
+
+export function TheTopography({ onOpen }: Props) {
+  const [vault, setVault] = useState<VaultNotes>({ daily: [], resources: [], projects: [] });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    listVaultNotes()
+      .then(setVault)
+      .finally(() => setLoading(false));
+  }, []);
 
   return (
-    <aside className="w-64 h-full flex flex-col bg-zinc-50 dark:bg-zinc-950 border-r border-zinc-200 dark:border-zinc-800 transition-colors duration-200">
-      <div className="p-3 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
-        <h1 className="font-bold text-sm tracking-widest text-zinc-900 dark:text-zinc-100 uppercase">
-          Cerebro
-        </h1>
-        <div className="flex items-center gap-1">
-          <button 
-            onClick={toggleTheme}
-            className="p-1.5 rounded-md text-zinc-500 hover:text-amber-600 dark:text-zinc-400 dark:hover:text-amber-400 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors"
-            title="Toggle Theme"
-          >
-            {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
-          </button>
-          <button 
-            className="p-1.5 rounded-md text-zinc-500 hover:text-amber-600 dark:text-zinc-400 dark:hover:text-amber-400 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors"
-            title="Settings"
-          >
-            <Settings size={16} />
-          </button>
-        </div>
+    <div className="flex flex-col h-full overflow-hidden">
+      <div className="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-4">
+        {loading ? (
+          <div className="space-y-4 animate-pulse">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="space-y-1.5">
+                <div className="h-2 bg-slate-200 dark:bg-white/10 rounded w-2/5 mx-2"></div>
+                <div className="h-7 bg-slate-100 dark:bg-white/5 rounded"></div>
+                <div className="h-7 bg-slate-100 dark:bg-white/5 rounded"></div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <>
+            <DailyModule notes={vault.daily} onOpen={onOpen} />
+            <ResourceModule notes={vault.resources} onOpen={onOpen} />
+            <ProjectModule notes={vault.projects} onOpen={onOpen} />
+          </>
+        )}
       </div>
-      
-      <DailyModule />
-      <ResourceModule />
-      <ProjectModule />
-    </aside>
+    </div>
   );
 }
