@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { TabBar } from '@/features/editor/components/TabBar'
 import { MarkdownEditor } from '@/features/editor/components/MarkdownEditor'
 import { useEditorStore } from '@/features/editor/store/useEditorStore'
+import { useTheme } from '@/core/hooks/useTheme'
 
 const INITIAL_CONTENT = `# Welcome to Synapse
 
@@ -22,32 +23,73 @@ function IconExplorer() {
   )
 }
 
+function IconSun() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  )
+}
+
+function IconMoon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+    </svg>
+  )
+}
+
 export function AppShell() {
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const { tabs, activeId, contents, setContent } = useEditorStore()
+  const { theme, toggleTheme } = useTheme()
 
   const activeContent = contents[activeId] ?? INITIAL_CONTENT
 
   return (
     <div className="grid h-full w-full overflow-hidden" style={{ gridTemplateColumns: 'var(--width-activitybar) auto 1fr' }}>
       <nav
-        className="flex flex-col items-center py-2 gap-0.5 bg-[var(--color-bg-secondary)] border-r border-[var(--color-border)] z-10"
+        className="flex flex-col items-center py-2 gap-0.5 bg-[var(--color-bg-secondary)] border-r border-[var(--color-border)] z-10 justify-between"
         aria-label="Activity bar"
       >
-        <button
-          className={[
-            'relative flex items-center justify-center w-9 h-9 rounded transition-colors duration-[var(--duration-fast)]',
-            'hover:bg-[var(--color-surface-hover)]',
-            sidebarOpen
-              ? 'text-[var(--color-text-primary)] before:absolute before:left-[-3px] before:top-1/2 before:-translate-y-1/2 before:w-0.5 before:h-4 before:bg-[var(--color-accent)] before:rounded-r'
-              : 'text-[var(--color-text-secondary)]',
-          ].join(' ')}
-          onClick={() => setSidebarOpen((o) => !o)}
-          aria-label="Toggle Explorer"
-          title="Explorer"
-        >
-          <IconExplorer />
-        </button>
+        <div className="flex flex-col gap-0.5 w-full items-center">
+          <button
+            className={[
+              'relative flex items-center justify-center w-9 h-9 rounded transition-colors duration-[var(--duration-fast)]',
+              'hover:bg-[var(--color-surface-hover)]',
+              sidebarOpen
+                ? 'text-[var(--color-text-primary)] before:absolute before:left-[-3px] before:top-1/2 before:-translate-y-1/2 before:w-0.5 before:h-4 before:bg-[var(--color-accent)] before:rounded-r'
+                : 'text-[var(--color-text-secondary)]',
+            ].join(' ')}
+            onClick={() => setSidebarOpen((o) => !o)}
+            aria-label="Toggle Explorer"
+            title="Explorer"
+          >
+            <IconExplorer />
+          </button>
+        </div>
+
+        <div className="flex flex-col gap-0.5 w-full items-center">
+          <button
+            className={[
+              'relative flex items-center justify-center w-9 h-9 rounded transition-colors duration-[var(--duration-fast)]',
+              'hover:bg-[var(--color-surface-hover)] text-[var(--color-text-secondary)]'
+            ].join(' ')}
+            onClick={toggleTheme}
+            aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} theme`}
+            title={`Switch to ${theme === 'light' ? 'dark' : 'light'} theme`}
+          >
+            {theme === 'light' ? <IconMoon /> : <IconSun />}
+          </button>
+        </div>
       </nav>
 
       <aside
