@@ -209,26 +209,46 @@ export const useEditorStore = create<EditorUIState>()(
 
     removeDeletedNoteContext: (id) =>
       set((state) => {
+        const isTarget = (tabId: string) => tabId === id || tabId.startsWith(id + '/')
+
         state.groups.forEach(g => {
-          const idx = g.tabs.findIndex(t => t.id === id)
-          if (idx !== -1) {
-            g.tabs.splice(idx, 1)
-            if (g.activeTabId === id) {
-              g.activeTabId = g.tabs.length > 0 ? g.tabs[Math.max(0, idx - 1)].id : null
+          const oldActiveIdx = g.tabs.findIndex(t => t.id === g.activeTabId)
+          const wasActiveTarget = g.activeTabId && isTarget(g.activeTabId)
+          
+          g.tabs = g.tabs.filter(t => !isTarget(t.id))
+          
+          if (wasActiveTarget) {
+            if (g.tabs.length === 0) {
+              g.activeTabId = null
+            } else {
+              const newIdx = Math.min(oldActiveIdx, g.tabs.length - 1)
+              g.activeTabId = g.tabs[Math.max(0, newIdx)].id
             }
           }
         })
         
-        state.groups = state.groups.filter(g => g.tabs.length > 0 || state.groups.length === 1)
-        if (!state.groups.find(g => g.id === state.activeGroupId) && state.groups.length > 0) {
-           state.activeGroupId = state.groups[0].id
+        // Remove empty secondary groups
+        if (state.groups.length > 1) {
+          state.groups = state.groups.filter(g => g.tabs.length > 0)
+          if (!state.groups.find(g => g.id === state.activeGroupId)) {
+            state.activeGroupId = state.groups[0].id
+          }
         }
 
-        delete state.contents[id]
-        delete state.dirtyNotes[id]
-        if (state.selectedPath === id) {
+        // Clean up contents, dirtyNotes, and selection
+        Object.keys(state.contents).forEach(key => {
+          if (isTarget(key)) delete state.contents[key]
+        })
+        Object.keys(state.dirtyNotes).forEach(key => {
+          if (isTarget(key)) delete state.dirtyNotes[key]
+        })
+        
+        if (state.selectedPath && isTarget(state.selectedPath)) {
           state.selectedPath = null
         }
+
+        // Also clean up expanded folders
+        state.expandedFolders = state.expandedFolders.filter(f => !isTarget(f))
       }),
 
     renameNodeContext: (oldPath, newPath) =>

@@ -107,13 +107,34 @@ public class LocalFileNoteRepository implements NoteRepository {
         MDC.put(MDC_NOTE_ID, id.value());
         try {
             Path filePath = getFilePath(id);
-            Files.deleteIfExists(filePath);
-            LOG.info("Delete Note SUCCESS");
+            Path folderPath = vaultPath.resolve(id.value());
+
+            if (Files.isRegularFile(filePath)) {
+                Files.deleteIfExists(filePath);
+                LOG.info("Delete Note SUCCESS");
+            }
+            if (Files.isDirectory(folderPath)) {
+                deleteRecursive(folderPath);
+                LOG.info("Delete Folder SUCCESS");
+            }
         } catch (IOException e) {
-            LOG.error("Delete Note ERROR", e);
-            throw new RuntimeException("Could not delete note file: " + id.value(), e);
+            LOG.error("Delete Node ERROR: " + id.value(), e);
+            throw new RuntimeException("Could not delete node: " + id.value(), e);
         } finally {
             MDC.remove(MDC_NOTE_ID);
+        }
+    }
+
+    private void deleteRecursive(Path path) throws IOException {
+        try (Stream<Path> walk = Files.walk(path)) {
+            walk.sorted(java.util.Comparator.reverseOrder())
+                .forEach(p -> {
+                    try {
+                        Files.delete(p);
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                });
         }
     }
 

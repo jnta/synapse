@@ -135,7 +135,60 @@ function InlineInput({ type, depth, initialValue = '', onCommit, onCancel }: { t
   )
 }
 
-function TreeNode({ node, depth = 0, creatingState, renamingState, onCommitCreate, onCancelCreate, onCommitRename, onCancelRename, onContextMenu }: { 
+function ConfirmationModal({ message, title, onConfirm, onCancel, confirmText = "Confirm", isDanger = true }: { 
+  message: string, 
+  title: string, 
+  onConfirm: () => void, 
+  onCancel: () => void, 
+  confirmText?: string,
+  isDanger?: boolean 
+}) {
+  return (
+    <div 
+      className="fixed inset-0 z-[1000] flex items-center justify-center p-6 bg-black/75 backdrop-blur-[6px] transition-all duration-300"
+      onClick={onCancel}
+    >
+      <div 
+        className="bg-[var(--color-bg-secondary)] border border-[var(--color-border-subtle)] rounded-3xl shadow-[0_40px_80px_-12px_rgba(0,0,0,0.6)] w-full max-w-[350px] overflow-hidden animate-in"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex flex-col items-center text-center p-10 pb-4">
+          <div className={[
+            "w-20 h-20 rounded-full flex items-center justify-center mb-8 shadow-sm",
+            isDanger ? "bg-red-500/10 text-red-600" : "bg-[var(--color-accent)]/10 text-[var(--color-accent)]"
+          ].join(' ')}>
+            {isDanger ? <IconTrash size={32} /> : <IconFile size={32} />}
+          </div>
+          <h3 className="text-xl font-bold text-[var(--color-text-primary)] mb-3 tracking-tight leading-tight">{title}</h3>
+          <p className="text-[14px] text-[var(--color-text-secondary)] leading-[1.6] px-4 opacity-90">
+            {message}
+          </p>
+        </div>
+        
+        <div className="flex items-center gap-4 p-8 pt-2">
+          <button 
+            onClick={onCancel}
+            className="flex-1 h-14 text-[14px] font-bold text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] rounded-2xl transition-all duration-200 border border-[var(--color-border-subtle)]"
+          >
+            Cancel
+          </button>
+          <button 
+            onClick={onConfirm}
+            style={{ backgroundColor: isDanger ? '#dc2626' : 'var(--color-accent)' }}
+            className={[
+              "flex-1 h-14 text-[14px] font-bold text-white rounded-2xl transition-all duration-200 active:scale-[0.96] shadow-lg hover:brightness-110",
+              isDanger ? "shadow-red-900/30" : "shadow-accent/10"
+            ].join(' ')}
+          >
+            {confirmText}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function TreeNode({ node, depth = 0, creatingState, renamingState, onCommitCreate, onCancelCreate, onCommitRename, onCancelRename, onContextMenu, onDelete }: { 
   node: FileNode, 
   depth?: number,
   creatingState: { parentPath: string, type: 'file' | 'folder' } | null,
@@ -144,10 +197,10 @@ function TreeNode({ node, depth = 0, creatingState, renamingState, onCommitCreat
   onCancelCreate: () => void,
   onCommitRename: (oldPath: string, newName: string, type: 'file'|'folder') => void,
   onCancelRename: () => void,
-  onContextMenu: (e: React.MouseEvent, type: 'file' | 'folder', path: string) => void
+  onContextMenu: (e: React.MouseEvent, type: 'file' | 'folder', path: string) => void,
+  onDelete: (path: string, type: 'file' | 'folder') => void
 }) {
-  const { openNote, expandedFolders, toggleFolder, selectedPath, setSelectedPath, removeDeletedNoteContext } = useEditorStore()
-  const { mutateAsync: deleteNoteMutate } = useDeleteNote()
+  const { openNote, expandedFolders, toggleFolder, selectedPath, setSelectedPath } = useEditorStore()
   const { mutateAsync: moveNodeMutate } = useMoveNode()
   const [isDragOver, setIsDragOver] = useState(false)
   
@@ -238,8 +291,7 @@ function TreeNode({ node, depth = 0, creatingState, renamingState, onCommitCreat
           className="opacity-0 group-hover:opacity-100 p-1 mr-2 text-[var(--color-text-muted)] hover:text-red-500 hover:bg-red-500/10 rounded-md transition-all"
           onClick={async (e) => {
             e.stopPropagation()
-            await deleteNoteMutate(node.note.id)
-            removeDeletedNoteContext(node.note.id)
+            onDelete(node.path, 'file')
           }}
           title="Delete File"
         >
@@ -302,6 +354,7 @@ function TreeNode({ node, depth = 0, creatingState, renamingState, onCommitCreat
               onCommitRename={onCommitRename}
               onCancelRename={onCancelRename}
               onContextMenu={onContextMenu}
+              onDelete={onDelete}
             />
           ))}
         </>
@@ -336,6 +389,7 @@ export function AppShell() {
   const [creating, setCreating] = useState<{ type: 'file' | 'folder', parentPath: string } | null>(null)
   const [renaming, setRenaming] = useState<{ path: string, type: 'file'|'folder' } | null>(null)
   const [contextMenu, setContextMenu] = useState<{ x: number, y: number, type: 'file' | 'folder' | 'root', path: string } | null>(null)
+  const [confirmDelete, setConfirmDelete] = useState<{ type: 'file' | 'folder', path: string } | null>(null)
 
   useEffect(() => {
     const hideMenu = () => setContextMenu(null)
@@ -503,9 +557,10 @@ export function AppShell() {
   }
 
   const handleDeleteNode = async (path: string) => {
-    // Both files and folders can be removed via the same mutate endpoint.
+    // Files are just deleted; folders are deleted RECURSIVELY by the backend
     await deleteNoteMutate(path)
     removeDeletedNoteContext(path)
+    setConfirmDelete(null)
   }
 
   return (
@@ -559,17 +614,17 @@ export function AppShell() {
             Synapse Vault
           </span>
           <div className="flex items-center gap-1 opacity-0 group-hover/sidebar:opacity-100 transition-all duration-[var(--duration-normal)]">
-            <button className="text-[var(--color-text-muted)] hover:text-[var(--color-accent)] p-1 rounded hover:bg-[var(--color-accent-subtle)] transition-colors" onClick={() => handleStartCreate('file')} title="New File">
-              <IconNewFile size={16} />
+            <button className="text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] p-1.5 rounded-md hover:bg-[var(--color-surface-hover)]/60 transition-colors" onClick={() => handleStartCreate('file')} title="New File">
+              <IconNewFile size={14} />
             </button>
-            <button className="text-[var(--color-text-muted)] hover:text-[var(--color-accent)] p-1 rounded hover:bg-[var(--color-accent-subtle)] transition-colors" onClick={() => handleStartCreate('folder')} title="New Folder">
-              <IconNewFolder size={16} />
+            <button className="text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] p-1.5 rounded-md hover:bg-[var(--color-surface-hover)]/60 transition-colors" onClick={() => handleStartCreate('folder')} title="New Folder">
+              <IconNewFolder size={14} />
             </button>
-            <button className="text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] p-1 rounded hover:bg-[var(--color-surface-hover)] transition-colors" onClick={() => fetchNotes()} title="Refresh Explorer">
-              <IconRefresh size={16} />
+            <button className="text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] p-1.5 rounded-md hover:bg-[var(--color-surface-hover)]/60 transition-colors" onClick={() => fetchNotes()} title="Refresh Explorer">
+              <IconRefresh size={14} />
             </button>
-            <button className="text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] p-1 rounded hover:bg-[var(--color-surface-hover)] transition-colors" onClick={() => collapseAllFolders()} title="Collapse Folders">
-              <IconCollapseAll size={16} />
+            <button className="text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] p-1.5 rounded-md hover:bg-[var(--color-surface-hover)]/60 transition-colors" onClick={() => collapseAllFolders()} title="Collapse Folders">
+              <IconCollapseAll size={14} />
             </button>
           </div>
         </div>
@@ -613,6 +668,7 @@ export function AppShell() {
                     setSelectedPath(path)
                     setContextMenu({ x: e.clientX, y: e.clientY, type, path })
                   }}
+                  onDelete={(path, type) => setConfirmDelete({ path, type })}
                 />
               ))}
             </div>
@@ -721,7 +777,7 @@ export function AppShell() {
                 label="Delete" 
                 danger 
                 icon={<IconTrash />} 
-                onClick={() => { handleDeleteNode(contextMenu.path); setContextMenu(null) }} 
+                onClick={() => { setConfirmDelete({ path: contextMenu.path, type: 'file' }); setContextMenu(null) }} 
               />
             </>
           ) : contextMenu.type === 'folder' ? (
@@ -745,7 +801,7 @@ export function AppShell() {
                 label="Delete" 
                 danger 
                 icon={<IconTrash />} 
-                onClick={() => { handleDeleteNode(contextMenu.path); setContextMenu(null) }} 
+                onClick={() => { setConfirmDelete({ path: contextMenu.path, type: 'folder' }); setContextMenu(null) }} 
               />
             </>
           ) : contextMenu.type === 'root' ? (
@@ -756,6 +812,21 @@ export function AppShell() {
             />
           ) : null}
         </div>
+      )}
+
+      {/* Confirmation Modal */}
+      {confirmDelete && (
+        <ConfirmationModal 
+          title={`Delete ${confirmDelete.type === 'file' ? 'Note' : 'Folder'}`}
+          message={
+            confirmDelete.type === 'file' 
+              ? "Are you sure you want to delete this note? This action cannot be undone."
+              : "Are you sure you want to delete this folder and all its contents? This will permanently remove all nested files and subfolders."
+          }
+          onConfirm={() => handleDeleteNode(confirmDelete.path)}
+          onCancel={() => setConfirmDelete(null)}
+          confirmText="Delete Permanently"
+        />
       )}
     </div>
   )

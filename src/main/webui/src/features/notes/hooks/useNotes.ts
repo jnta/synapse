@@ -43,6 +43,7 @@ export const useDeleteNote = () => {
     mutationFn: (id: string) => notesApi.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notes'] })
+      queryClient.invalidateQueries({ queryKey: ['folders'] })
     }
   })
 }
