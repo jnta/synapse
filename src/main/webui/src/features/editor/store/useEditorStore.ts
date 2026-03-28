@@ -1,6 +1,9 @@
 import { create } from 'zustand'
 import { immer } from 'zustand/middleware/immer'
+import { enableMapSet } from 'immer'
 import type { Tab } from '@/core/types/Tab'
+
+enableMapSet()
 
 export interface TabGroup {
   id: string
@@ -14,6 +17,7 @@ interface EditorUIState {
   selectedPath: string | null
   contents: Record<string, string>
   expandedFolders: string[]
+  dirtyNotes: Record<string, boolean>
   
   openNote: (id: string, title: string, content: string) => void
   closeTab: (groupId: string, tabId: string) => void
@@ -35,6 +39,7 @@ interface EditorUIState {
   collapseAllFolders: () => void
   removeDeletedNoteContext: (id: string) => void
   renameNodeContext: (oldPath: string, newPath: string) => void
+  setNoteDirty: (id: string, dirty: boolean) => void
 }
 
 export const useEditorStore = create<EditorUIState>()(
@@ -44,6 +49,7 @@ export const useEditorStore = create<EditorUIState>()(
     selectedPath: null,
     contents: {},
     expandedFolders: [],
+    dirtyNotes: {},
     isDraggingTab: false,
 
     setIsDraggingTab: (isDragging) => set((state) => { state.isDraggingTab = isDragging }),
@@ -60,7 +66,11 @@ export const useEditorStore = create<EditorUIState>()(
           group.tabs.push({ id, name: title })
         }
         group.activeTabId = id
-        state.contents[id] = content
+        
+        // Update content if it's not present or not currently dirty
+        if (state.contents[id] === undefined || !state.dirtyNotes[id]) {
+          state.contents[id] = content
+        }
       })
     },
 
@@ -88,6 +98,7 @@ export const useEditorStore = create<EditorUIState>()(
         const isTabOpenAnywhere = state.groups.some(g => g.tabs.some(t => t.id === tabId))
         if (!isTabOpenAnywhere) {
           delete state.contents[tabId]
+          delete state.dirtyNotes[tabId]
         }
       }),
 
@@ -214,6 +225,7 @@ export const useEditorStore = create<EditorUIState>()(
         }
 
         delete state.contents[id]
+        delete state.dirtyNotes[id]
         if (state.selectedPath === id) {
           state.selectedPath = null
         }
@@ -256,6 +268,11 @@ export const useEditorStore = create<EditorUIState>()(
         }
 
         state.expandedFolders = state.expandedFolders.map(modifyPath)
+        
+        if (state.dirtyNotes[oldPath]) {
+          delete state.dirtyNotes[oldPath]
+          state.dirtyNotes[newPath] = true
+        }
       }),
 
     setSelectedPath: (path) =>
@@ -296,6 +313,15 @@ export const useEditorStore = create<EditorUIState>()(
     collapseAllFolders: () =>
       set((state) => {
         state.expandedFolders = []
+      }),
+
+    setNoteDirty: (id, dirty) =>
+      set((state) => {
+        if (dirty) {
+          state.dirtyNotes[id] = true
+        } else {
+          delete state.dirtyNotes[id]
+        }
       }),
   })),
 )

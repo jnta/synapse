@@ -141,143 +141,61 @@ button {
   color: inherit;
 }
 
-/* ─── Tiptap integration ─────────────────────────────────────────────── */
+/* ─── Editor Base ───────────────────────────────────────────────────────── */
 
-.tiptap {
+.cm-editor {
   font-family: var(--font-sans);
-  font-size: 15px;
-  line-height: 1.7;
-  padding: 48px 64px;
-  max-width: 800px;
-  margin: 0 auto;
-  caret-color: var(--color-editor-cursor);
-  color: var(--color-text-primary);
-  outline: none;
 }
 
-.tiptap p {
-  margin-bottom: 1em;
+.cm-scroller {
+  scrollbar-gutter: stable;
 }
 
-.tiptap h1 {
-  font-size: 1.8em;
-  font-weight: 600;
-  margin-top: 1.5em;
-  margin-bottom: 0.5em;
-  line-height: 1.2;
+.cm-content {
+  caret-color: var(--color-editor-cursor) !important;
 }
 
-.tiptap h2 {
-  font-size: 1.5em;
-  font-weight: 600;
-  margin-top: 1.2em;
-  margin-bottom: 0.5em;
-  line-height: 1.2;
+/* CodeMirror Markdown Syntax Highlighting Tweaks */
+.cm-m-heading1 { font-size: 1.8em; font-weight: 600; color: var(--color-text-primary); }
+.cm-m-heading2 { font-size: 1.5em; font-weight: 600; color: var(--color-text-primary); }
+.cm-m-heading3 { font-size: 1.25em; font-weight: 600; color: var(--color-text-primary); }
+.cm-m-quote { color: var(--color-text-secondary); font-style: italic; border-left: 3px solid var(--color-border); padding-left: 10px; }
+.cm-m-list { color: var(--color-accent); }
+
+/* ─── Utilities ─────────────────────────────────────────────────────────── */
+
+.scrollbar-none {
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
 }
 
-.tiptap h3 {
-  font-size: 1.25em;
-  font-weight: 600;
-  margin-top: 1em;
-  margin-bottom: 0.5em;
+.custom-scrollbar::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
 }
-
-.tiptap ul, .tiptap ol {
-  padding-left: 24px;
-  margin-bottom: 1em;
-}
-
-.tiptap ul {
-  list-style: disc;
-}
-
-.tiptap ol {
-  list-style: decimal;
-}
-
-.tiptap li p {
-  margin: 0;
-}
-
-.tiptap blockquote {
-  border-left: 3px solid var(--color-border);
-  padding-left: 16px;
-  margin-left: 0;
-  margin-right: 0;
-  color: var(--color-text-secondary);
-  font-style: italic;
-}
-
-.tiptap code {
-  font-family: var(--font-mono);
-  background: var(--color-bg-secondary);
-  border-radius: 4px;
-  padding: 2px 4px;
-  font-size: 0.9em;
-}
-
-.tiptap pre {
-  background: var(--color-bg-tertiary);
-  padding: 12px;
-  border-radius: 6px;
-  overflow-x: auto;
-  margin-bottom: 1em;
-}
-
-.tiptap pre code {
+.custom-scrollbar::-webkit-scrollbar-track {
   background: transparent;
-  padding: 0;
-  color: inherit;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border: 3px solid transparent;
+  background-clip: padding-box;
+  border-radius: 10px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-muted);
+  border: 3px solid transparent;
+  background-clip: padding-box;
 }
 
-.tiptap a {
-  color: var(--color-accent);
-  text-decoration: underline;
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-/* Task List styles */
-.tiptap ul[data-type="taskList"] {
-  list-style: none;
-  padding: 0;
-}
-
-.tiptap ul[data-type="taskList"] li {
-  display: flex;
-  align-items: flex-start;
-  margin-bottom: 0.25em;
-}
-
-.tiptap ul[data-type="taskList"] li > label {
-  flex: 0 0 auto;
-  margin-right: 0.75em;
-  user-select: none;
-}
-
-.tiptap ul[data-type="taskList"] li > div {
-  flex: 1 1 auto;
-}
-
-.tiptap ul[data-type="taskList"] input[type="checkbox"] {
-  width: 0.95rem; /* Slightly smaller for a more elegant look */
-  height: 0.95rem;
-  margin-top: 0.35rem; 
-  cursor: pointer;
-  accent-color: var(--color-accent);
-}
-
-.tiptap ul[data-type="taskList"] li[data-checked="true"] > div > p {
-  text-decoration: line-through;
-  color: var(--color-text-muted);
-}
-
-
-
-/* Placeholder support */
-.tiptap p.is-editor-empty:first-child::before {
-  content: attr(data-placeholder);
-  float: left;
-  color: var(--color-text-muted);
-  pointer-events: none;
-  height: 0;
+.animate-in {
+  animation: fade-in var(--duration-normal) ease-out forwards;
 }
 

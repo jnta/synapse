@@ -6,20 +6,22 @@ import org.synapse.application.dto.UpdateNoteCommand;
 import org.synapse.domain.model.Note;
 import org.synapse.domain.model.NoteId;
 import org.synapse.domain.repository.NoteRepository;
+import org.synapse.domain.service.SlugGenerator;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import java.nio.file.Path;
 import java.util.List;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 @ApplicationScoped
 public class NoteUseCases {
 
     private final NoteRepository noteRepository;
+    private final SlugGenerator slugGenerator;
 
-    public NoteUseCases(NoteRepository noteRepository) {
+    public NoteUseCases(NoteRepository noteRepository, SlugGenerator slugGenerator) {
         this.noteRepository = noteRepository;
+        this.slugGenerator = slugGenerator;
     }
 
     public List<NoteDTO> getAllNotes() {
@@ -35,16 +37,7 @@ public class NoteUseCases {
     }
 
     public NoteDTO createNote(CreateNoteCommand command) {
-        String slug = command.title().toLowerCase()
-                .replaceAll("[^a-z0-9\\-/]", "-") // Allow forward slash
-                .replaceAll("-+", "-")
-                .replaceAll("/+", "/")
-                .replaceAll("^-|-$|^/|/$", "");
-        
-        if (slug.isEmpty()) {
-            slug = "untitled-" + UUID.randomUUID().toString().substring(0, 8);
-        }
-        
+        String slug = slugGenerator.generateSlug(command.title());
         NoteId newId = new NoteId(slug);
         
         // Ensure uniqueness

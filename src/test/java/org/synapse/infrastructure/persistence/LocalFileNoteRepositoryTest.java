@@ -22,7 +22,7 @@ class LocalFileNoteRepositoryTest {
     @BeforeEach
     void setUp() throws IOException {
         tempVault = Files.createTempDirectory("synapse-test-vault");
-        repository = new LocalFileNoteRepository(tempVault.toString());
+        repository = new LocalFileNoteRepository(tempVault.toString(), new AtomicFileStore());
     }
 
     @AfterEach

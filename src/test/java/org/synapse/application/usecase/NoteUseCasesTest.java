@@ -8,6 +8,7 @@ import org.synapse.application.dto.UpdateNoteCommand;
 import org.synapse.domain.model.Note;
 import org.synapse.domain.model.NoteId;
 import org.synapse.domain.repository.NoteRepository;
+import org.synapse.domain.service.SlugGenerator;
 
 import java.nio.file.Path;
 import java.util.Optional;
@@ -21,7 +22,8 @@ import static org.mockito.Mockito.when;
 class NoteUseCasesTest {
 
     private final NoteRepository mockRepository = Mockito.mock(NoteRepository.class);
-    private final NoteUseCases useCases = new NoteUseCases(mockRepository);
+    private final SlugGenerator slugGenerator = new SlugGenerator();
+    private final NoteUseCases useCases = new NoteUseCases(mockRepository, slugGenerator);
 
     @Test
     void testCreateNote() {

@@ -1,14 +1,26 @@
 package org.synapse.infrastructure.rest;
 
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
+import java.util.List;
+
 import org.synapse.application.dto.CreateNoteCommand;
 import org.synapse.application.dto.NoteDTO;
 import org.synapse.application.dto.UpdateNoteCommand;
 import org.synapse.application.usecase.NoteUseCases;
 
-import jakarta.ws.rs.*;
+import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DELETE;
+import jakarta.ws.rs.Encoded;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.POST;
+import jakarta.ws.rs.PUT;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import java.util.List;
+
 
 @Path("/api/v1/notes")
 @Produces(MediaType.APPLICATION_JSON)
@@ -28,8 +40,13 @@ public class NoteResource {
 
     @GET
     @Path("/{id: .+}")
-    public NoteDTO getNote(@PathParam("id") String id) {
-        return noteUseCases.getNote(id);
+    public NoteDTO getNote(@Encoded @PathParam("id") String id) {
+        NoteDTO note = noteUseCases.getNote(decode(id));
+        if (note != null && note.content() != null) {
+            String snippet = note.content().substring(0, Math.min(note.content().length(), 50)).replace("\n", "\\n");
+            System.out.println("[NoteResource] GET content snippet: " + snippet);
+        }
+        return note;
     }
 
     @POST
@@ -40,15 +57,23 @@ public class NoteResource {
 
     @PUT
     @Path("/{id: .+}")
-    public NoteDTO updateNote(@PathParam("id") String id, UpdateNoteCommand command) {
-        return noteUseCases.updateNote(id, command);
+    public NoteDTO updateNote(@Encoded @PathParam("id") String id, UpdateNoteCommand command) {
+        if (command != null && command.content() != null) {
+            System.out.println("[NoteResource] PUT content length: " + command.content().length());
+            System.out.println("[NoteResource] PUT has newlines: " + command.content().contains("\n"));
+        }
+        return noteUseCases.updateNote(decode(id), command);
     }
 
     @DELETE
     @Path("/{id: .+}")
-    public Response deleteNote(@PathParam("id") String id) {
-        noteUseCases.deleteNote(id);
+    public Response deleteNote(@Encoded @PathParam("id") String id) {
+        noteUseCases.deleteNote(decode(id));
         return Response.noContent().build();
+    }
+
+    private String decode(String id) {
+        return URLDecoder.decode(id, StandardCharsets.UTF_8);
     }
 
     @POST

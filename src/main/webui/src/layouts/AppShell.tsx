@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useRef } from 'react'
 import { TabBar } from '@/features/editor/components/TabBar'
 import { MarkdownEditor } from '@/features/editor/components/MarkdownEditor'
 import { useEditorStore } from '@/features/editor/store/useEditorStore'
@@ -117,8 +117,8 @@ function InlineInput({ type, depth, initialValue = '', onCommit, onCancel }: { t
   return (
     <div className="flex flex-col py-1" style={{ paddingLeft: `${depth * 12 + 8}px` }}>
       <div className="flex items-center gap-1.5 bg-[var(--color-bg-secondary)] border border-[var(--color-accent)] rounded px-1.5 py-1 mr-2 shadow-sm">
-        <span className="text-[var(--color-accent)] shrink-0">
-          {type === 'file' ? <IconNewFile /> : <IconNewFolder />}
+        <span className="text-[var(--color-text-muted)] shrink-0 opacity-60">
+          {type === 'file' ? <IconNewFile size={13} /> : <IconNewFolder size={13} />}
         </span>
         <input 
           autoFocus 
@@ -211,15 +211,31 @@ function TreeNode({ node, depth = 0, creatingState, renamingState, onCommitCreat
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         onContextMenu={(e) => onContextMenu(e, 'file', node.path)}
-        className={`group flex justify-between items-center text-[13px] text-[var(--color-text-primary)] cursor-pointer transition-colors duration-[var(--duration-fast)] ${isDragOver ? 'bg-[var(--color-accent)]/20 shadow-[inset_0_0_0_1px_var(--color-accent)]' : (isSelected ? 'bg-[var(--color-surface-hover)]' : 'hover:bg-[var(--color-surface-hover)]')}`}
-        onClick={(e) => { e.stopPropagation(); setSelectedPath(node.path); openNote(node.note.id, node.note.title, node.note.content) }}
+        className={[
+          "group flex justify-between items-center text-[13px] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] cursor-pointer transition-all duration-[var(--duration-fast)]",
+          isDragOver ? "bg-[var(--color-accent)]/10 shadow-[inset_2px_0_0_var(--color-accent)]" : "",
+          isSelected ? "bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] shadow-[inset_2px_0_0_var(--color-accent)]" : "hover:bg-[var(--color-surface-hover)]/60"
+        ].join(' ')}
+        onClick={(e) => { 
+          e.stopPropagation(); 
+          if (node.note) {
+            setSelectedPath(node.path); 
+            openNote(node.note.id, node.note.title, node.note.content);
+          }
+        }}
       >
-        <div className="flex-1 py-1.5 flex items-center gap-1.5 truncate" style={{ paddingLeft: `${depth * 12 + 8}px` }}>
-          <IconFile className="shrink-0 opacity-60 group-hover:opacity-100 transition-opacity" />
-          <span className="truncate flex-1">{node.name.replace(/\.md$/, '')}</span>
+        <div className="flex-1 py-1.5 flex items-center gap-2 truncate" style={{ paddingLeft: `${depth * 12 + 8}px` }}>
+          <IconFile 
+            size={13.5}
+            className={[
+              "shrink-0 transition-opacity duration-[var(--duration-normal)]",
+              isSelected ? "text-[var(--color-text-primary)] opacity-100" : "text-[var(--color-text-secondary)] opacity-40 group-hover:opacity-80"
+            ].join(' ')} 
+          />
+          <span className={`truncate flex-1 tracking-tight ${isSelected ? 'text-[var(--color-text-primary)] font-medium' : 'text-[var(--color-text-secondary)]'}`}>{node.name.replace(/\.md$/, '')}</span>
         </div>
         <button 
-          className="opacity-0 group-hover:opacity-100 p-1 mr-2 text-[var(--color-text-muted)] hover:text-red-400 transition-opacity"
+          className="opacity-0 group-hover:opacity-100 p-1 mr-2 text-[var(--color-text-muted)] hover:text-red-500 hover:bg-red-500/10 rounded-md transition-all"
           onClick={async (e) => {
             e.stopPropagation()
             await deleteNoteMutate(node.note.id)
@@ -244,13 +260,23 @@ function TreeNode({ node, depth = 0, creatingState, renamingState, onCommitCreat
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        className={`group flex justify-between items-center text-[13px] font-semibold text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] cursor-pointer transition-colors duration-[var(--duration-fast)] select-none ${isDragOver ? 'bg-[var(--color-accent)]/20 shadow-[inset_0_0_0_1px_var(--color-accent)] text-[var(--color-text-primary)]' : (isSelected ? 'bg-[var(--color-surface-hover)] text-[var(--color-text-primary)]' : 'hover:bg-[var(--color-surface-hover)]')}`}
+        className={[
+          "group flex justify-between items-center text-[13px] font-semibold text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] cursor-pointer transition-all duration-[var(--duration-fast)] select-none",
+          isDragOver ? "bg-[var(--color-accent)]/10 shadow-[inset_2px_0_0_var(--color-accent)] text-[var(--color-text-primary)]" : "",
+          isSelected ? "bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] shadow-[inset_2px_0_0_var(--color-accent)]" : "hover:bg-[var(--color-surface-hover)]/60"
+        ].join(' ')}
         onClick={(e) => { e.stopPropagation(); setSelectedPath(node.path); toggleFolder(node.path) }}
         onContextMenu={(e) => onContextMenu(e, 'folder', node.path)}
       >
-        <div className="flex-1 py-1.5 flex items-center gap-1.5 truncate" style={{ paddingLeft: `${depth * 12 + 8}px` }}>
-          <IconChevronRight className={`transition-transform duration-150 ${isExpanded ? 'rotate-90' : ''}`} />
-          <span className="truncate flex-1">{node.name}</span>
+        <div className="flex-1 py-1.5 flex items-center gap-2 truncate" style={{ paddingLeft: `${depth * 12 + 8}px` }}>
+          <IconChevronRight 
+            size={13}
+            className={[
+              "shrink-0 transition-transform duration-[var(--duration-normal)] text-[var(--color-text-secondary)] opacity-40 group-hover:opacity-100",
+              isExpanded ? "rotate-90 opacity-100" : ""
+            ].join(' ')} 
+          />
+          <span className="truncate flex-1 tracking-tight text-[var(--color-text-secondary)] group-hover:text-[var(--color-text-primary)]">{node.name}</span>
         </div>
       </div>
       
@@ -293,7 +319,7 @@ function TreeNode({ node, depth = 0, creatingState, renamingState, onCommitCreat
 
 export function AppShell() {
   const [sidebarOpen, setSidebarOpen] = useState(true)
-  const { groups, contents, setContent, openNote, collapseAllFolders, setSelectedPath, setContentOnSave, setActiveGroup, isDraggingTab, setIsDraggingTab, moveTabToNewGroup, removeDeletedNoteContext, renameNodeContext } = useEditorStore()
+  const { groups, contents, setContent, openNote, closeTab, collapseAllFolders, setSelectedPath, setContentOnSave, setActiveGroup, isDraggingTab, setIsDraggingTab, moveTabToNewGroup, removeDeletedNoteContext, renameNodeContext, dirtyNotes, setNoteDirty } = useEditorStore()
   const [dragSplitTarget, setDragSplitTarget] = useState<string | null>(null)
   const { data: notesData, refetch: fetchNotes } = useNotesList()
   const { data: foldersData } = useFoldersList()
@@ -317,36 +343,95 @@ export function AppShell() {
     return () => window.removeEventListener('click', hideMenu)
   }, [])
 
-  // Simple debounce logic for saving
+  // Debounced Auto-save for all dirty notes
+  const timeoutsRef = useRef<Record<string, number>>({})
+  const lastContentsRef = useRef<Record<string, string>>({})
+
+  // Helper to save a single note immediately
+  const flushNote = async (id: string) => {
+    if (!dirtyNotes[id]) {
+      return
+    }
+    
+    const content = contents[id]
+    if (content === undefined) {
+      return
+    }
+    
+    const title = id.split('/').pop() || id
+    
+    // Clear pending timeout if any
+    if (timeoutsRef.current[id]) {
+      window.clearTimeout(timeoutsRef.current[id])
+      delete timeoutsRef.current[id]
+    }
+    
+    try {
+      await saveNoteMutate({ id, req: { title, content } })
+      setContentOnSave(id, title)
+      setNoteDirty(id, false)
+      delete lastContentsRef.current[id]
+    } catch (err) {
+      console.error('[AutoSave] Failed to flush note:', id, err)
+    }
+  }
+
   useEffect(() => {
-    const handles: number[] = []
-
-    groups.forEach(g => {
-      const tabId = g.activeTabId
-      if (!tabId) return
-
-      const currentContent = contents[tabId]
-      if (currentContent === undefined) return
-      
-      const existingNote = notes.find(n => n.id === tabId)
-      if (!existingNote) return // The note was deleted or moved; do not attempt ghost saves.
-      
-      const title = tabId.split('/').pop() || tabId
-
-      if (existingNote.content === currentContent && existingNote.title === title) {
-        return
+    const dirtyIds = Object.keys(dirtyNotes)
+    
+    // 1. Cleanup timeouts for notes that are no longer dirty
+    Object.keys(timeoutsRef.current).forEach(id => {
+      if (!dirtyIds.includes(id)) {
+        window.clearTimeout(timeoutsRef.current[id])
+        delete timeoutsRef.current[id]
+        delete lastContentsRef.current[id]
       }
-
-      const handler = window.setTimeout(() => {
-        saveNoteMutate({ id: tabId, req: { title, content: currentContent } }).then(() => {
-          setContentOnSave(tabId, title)
-        })
-      }, 1000)
-      handles.push(handler)
     })
 
-    return () => handles.forEach(h => clearTimeout(h))
-  }, [groups, contents, saveNoteMutate, notes, setContentOnSave])
+    // 2. Set or refresh timeouts for all dirty notes
+    dirtyIds.forEach(id => {
+      const currentContent = contents[id]
+      if (currentContent === undefined) {
+        return
+      }
+      
+      const title = id.split('/').pop() || id
+
+      // Refresh timer ONLY if content changed or no timer exists
+      if (currentContent !== lastContentsRef.current[id] || !timeoutsRef.current[id]) {
+        if (timeoutsRef.current[id]) {
+          window.clearTimeout(timeoutsRef.current[id])
+        }
+
+        timeoutsRef.current[id] = window.setTimeout(() => {
+          saveNoteMutate({ id, req: { title, content: currentContent } }).then(() => {
+            setContentOnSave(id, title)
+            setNoteDirty(id, false)
+            delete timeoutsRef.current[id]
+            delete lastContentsRef.current[id]
+          }).catch(err => {
+            console.error('[AutoSave] Save failed:', id, err)
+          })
+        }, 800)
+        
+        lastContentsRef.current[id] = currentContent
+      }
+    })
+  }, [contents, dirtyNotes, saveNoteMutate, setContentOnSave, setNoteDirty])
+
+  // Component unmount cleanup - flush all dirty notes
+  useEffect(() => {
+    return () => {
+      const ids = Object.keys(timeoutsRef.current)
+      ids.forEach(id => {
+        window.clearTimeout(timeoutsRef.current[id])
+        // On unmount we can't easily wait for async save, 
+        // but the app state is going away anyway.
+        // In a real desktop app we might want to block unmount,
+        // but here we just cleanup.
+      })
+    }
+  }, [])
 
 
   const treeNodes = useMemo(() => buildTree(notes, folders), [notes, folders])
@@ -469,22 +554,22 @@ export function AppShell() {
         aria-label="Explorer"
         aria-hidden={!sidebarOpen}
       >
-        <div className="flex justify-between items-center px-4 py-3 shrink-0 border-b border-[var(--color-border-subtle)] z-10 bg-[var(--color-sidebar-bg)]">
-          <span className="text-[11px] font-semibold tracking-widest uppercase text-[var(--color-text-secondary)] whitespace-nowrap overflow-hidden">
+        <div className="flex justify-between items-center px-4 py-3 shrink-0 border-b border-[var(--color-border-subtle)] z-10 bg-[var(--color-sidebar-bg)] shadow-[0_4px_12px_rgba(0,0,0,0.02)]">
+          <span className="text-[10px] font-bold tracking-[0.2em] uppercase text-[var(--color-text-secondary)] whitespace-nowrap overflow-hidden">
             Synapse Vault
           </span>
-          <div className="flex items-center gap-1.5 opacity-0 group-hover/sidebar:opacity-100 transition-opacity">
-            <button className="text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] p-1 rounded hover:bg-[var(--color-surface-hover)] transition-colors" onClick={() => handleStartCreate('file')} title="New File">
-              <IconNewFile />
+          <div className="flex items-center gap-1 opacity-0 group-hover/sidebar:opacity-100 transition-all duration-[var(--duration-normal)]">
+            <button className="text-[var(--color-text-muted)] hover:text-[var(--color-accent)] p-1 rounded hover:bg-[var(--color-accent-subtle)] transition-colors" onClick={() => handleStartCreate('file')} title="New File">
+              <IconNewFile size={16} />
             </button>
-            <button className="text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] p-1 rounded hover:bg-[var(--color-surface-hover)] transition-colors" onClick={() => handleStartCreate('folder')} title="New Folder">
-              <IconNewFolder />
+            <button className="text-[var(--color-text-muted)] hover:text-[var(--color-accent)] p-1 rounded hover:bg-[var(--color-accent-subtle)] transition-colors" onClick={() => handleStartCreate('folder')} title="New Folder">
+              <IconNewFolder size={16} />
             </button>
             <button className="text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] p-1 rounded hover:bg-[var(--color-surface-hover)] transition-colors" onClick={() => fetchNotes()} title="Refresh Explorer">
-              <IconRefresh />
+              <IconRefresh size={16} />
             </button>
             <button className="text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] p-1 rounded hover:bg-[var(--color-surface-hover)] transition-colors" onClick={() => collapseAllFolders()} title="Collapse Folders">
-              <IconCollapseAll />
+              <IconCollapseAll size={16} />
             </button>
           </div>
         </div>
@@ -550,13 +635,28 @@ export function AppShell() {
                    tabs={group.tabs} 
                    activeId={group.activeTabId} 
                    showCloseGroup={groups.length > 1}
+                    onCloseTab={(id) => {
+                      console.log("[AppShell] Tab close requested:", id)
+                      flushNote(id).then(() => {
+                        console.log("[AppShell] Flush done, closing tab:", id)
+                        closeTab(group.id, id)
+                      })
+                    }}
                  />
                  {group.activeTabId ? (
-                   <MarkdownEditor
-                     key={group.activeTabId}
-                     content={activeContent}
-                     onChange={(v) => { if (group.activeTabId) setContent(group.activeTabId, v) }}
-                   />
+                    <MarkdownEditor
+                      key={group.activeTabId}
+                      content={activeContent}
+                      onChange={(v) => { 
+                        if (group.activeTabId) {
+                          const current = useEditorStore.getState().contents[group.activeTabId]
+                          if (current !== v) {
+                            setContent(group.activeTabId, v)
+                            setNoteDirty(group.activeTabId, true)
+                          }
+                        }
+                      }}
+                    />
                  ) : (
                    <div className="flex-1 flex flex-col items-center justify-center text-[13px] text-[var(--color-text-muted)] gap-4">
                       <div className="opacity-50">
