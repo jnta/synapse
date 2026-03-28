@@ -36,9 +36,10 @@ public class NoteUseCases {
 
     public NoteDTO createNote(CreateNoteCommand command) {
         String slug = command.title().toLowerCase()
-                .replaceAll("[^a-z0-9\\-]", "-")
+                .replaceAll("[^a-z0-9\\-/]", "-") // Allow forward slash
                 .replaceAll("-+", "-")
-                .replaceAll("^-|-$", "");
+                .replaceAll("/+", "/")
+                .replaceAll("^-|-$|^/|/$", "");
         
         if (slug.isEmpty()) {
             slug = "untitled-" + UUID.randomUUID().toString().substring(0, 8);
@@ -85,5 +86,9 @@ public class NoteUseCases {
 
     public List<String> getAllFolders() {
         return noteRepository.findAllFolders();
+    }
+
+    public void moveNode(String source, String target) {
+        noteRepository.move(source, target);
     }
 }

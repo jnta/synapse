@@ -8,6 +8,25 @@ export interface NoteDTO {
   state: string;
 }
 
+export interface CreateNoteRequest {
+  title: string;
+  content: string;
+}
+
+export interface UpdateNoteRequest {
+  title: string;
+  content: string;
+}
+
+export interface CreateFolderRequest {
+  path: string;
+}
+
+export interface MoveNodeRequest {
+  source: string;
+  target: string;
+}
+
 export const notesApi = {
   getAll: async (): Promise<NoteDTO[]> => {
     const res = await fetch('/api/v1/notes');
@@ -19,20 +38,20 @@ export const notesApi = {
     if (!res.ok) throw new Error('Failed to fetch note');
     return res.json();
   },
-  create: async (title: string, content: string): Promise<NoteDTO> => {
+  create: async (req: CreateNoteRequest): Promise<NoteDTO> => {
     const res = await fetch('/api/v1/notes', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title, content }),
+      body: JSON.stringify(req),
     });
     if (!res.ok) throw new Error('Failed to create note');
     return res.json();
   },
-  update: async (id: string, title: string, content: string): Promise<NoteDTO> => {
+  update: async (id: string, req: UpdateNoteRequest): Promise<NoteDTO> => {
     const res = await fetch(`/api/v1/notes/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title, content }),
+      body: JSON.stringify(req),
     });
     if (!res.ok) throw new Error('Failed to update note');
     return res.json();
@@ -43,11 +62,11 @@ export const notesApi = {
     });
     if (!res.ok) throw new Error('Failed to delete note');
   },
-  createFolder: async (path: string): Promise<void> => {
+  createFolder: async (req: CreateFolderRequest): Promise<void> => {
     const res = await fetch('/api/v1/notes/folders', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ path }),
+      body: JSON.stringify(req),
     });
     if (!res.ok) throw new Error('Failed to create folder');
   },
@@ -55,5 +74,13 @@ export const notesApi = {
     const res = await fetch('/api/v1/notes/folders');
     if (!res.ok) throw new Error('Failed to fetch folders');
     return res.json();
+  },
+  moveNode: async (req: MoveNodeRequest): Promise<void> => {
+    const res = await fetch('/api/v1/notes/move', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(req),
+    });
+    if (!res.ok) throw new Error('Failed to move node');
   }
 };

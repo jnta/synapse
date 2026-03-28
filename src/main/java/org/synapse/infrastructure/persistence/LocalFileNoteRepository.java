@@ -97,6 +97,34 @@ public class LocalFileNoteRepository implements NoteRepository {
         }
     }
 
+    @Override
+    public void move(String sourceId, String targetId) {
+        Path possibleSourceFile = vaultPath.resolve(sourceId + ".md");
+        Path possibleSourceFolder = vaultPath.resolve(sourceId);
+
+        Path actualSource;
+        Path actualTarget;
+
+        if (Files.isRegularFile(possibleSourceFile)) {
+            actualSource = possibleSourceFile;
+            actualTarget = vaultPath.resolve(targetId + ".md");
+        } else if (Files.isDirectory(possibleSourceFolder)) {
+            actualSource = possibleSourceFolder;
+            actualTarget = vaultPath.resolve(targetId);
+        } else {
+            throw new IllegalArgumentException("Source does not exist: " + sourceId);
+        }
+
+        try {
+            if (actualTarget.getParent() != null) {
+                Files.createDirectories(actualTarget.getParent());
+            }
+            Files.move(actualSource, actualTarget);
+        } catch (IOException e) {
+            throw new RuntimeException("Could not move node", e);
+        }
+    }
+
     private Optional<Note> readNoteFromFile(Path filePath) {
         try {
             String content = Files.readString(filePath);

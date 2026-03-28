@@ -64,5 +64,13 @@ public class NoteResource {
         return noteUseCases.getAllFolders();
     }
 
+    @POST
+    @Path("/move")
+    public Response moveNode(MoveRequest request) {
+        noteUseCases.moveNode(request.source(), request.target());
+        return Response.noContent().build();
+    }
+
     public record CreateFolderRequest(String path) {}
+    public record MoveRequest(String source, String target) {}
 }

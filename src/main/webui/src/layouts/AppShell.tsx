@@ -1,8 +1,9 @@
-import { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { TabBar } from '@/features/editor/components/TabBar'
 import { MarkdownEditor } from '@/features/editor/components/MarkdownEditor'
 import { useEditorStore } from '@/features/editor/store/useEditorStore'
 import { useTheme } from '@/core/hooks/useTheme'
+import { useNotesList, useFoldersList, useCreateNote, useCreateFolder, useUpdateNote, useDeleteNote, useMoveNode } from '@/features/notes/hooks/useNotes'
 
 function IconExplorer() {
   return (
@@ -214,13 +215,60 @@ function TreeNode({ node, depth = 0, creatingState, onCommitCreate, onCancelCrea
   onCommitCreate: (path: string) => void,
   onCancelCreate: () => void
 }) {
-  const { openNote, deleteNote, expandedFolders, toggleFolder } = useEditorStore()
+  const { openNote, expandedFolders, toggleFolder, selectedPath, setSelectedPath, removeDeletedNoteContext } = useEditorStore()
+  const { mutateAsync: deleteNoteMutate } = useDeleteNote()
+  const { mutateAsync: moveNodeMutate } = useMoveNode()
+  const [isDragOver, setIsDragOver] = useState(false)
   
+  const isSelected = selectedPath === node.path
+
+  const handleDragStart = (e: React.DragEvent) => {
+    e.dataTransfer.setData('text/plain', node.path)
+    e.stopPropagation()
+  }
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragOver(true)
+  }
+
+  const handleDragLeave = () => {
+    setIsDragOver(false)
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragOver(false)
+    const source = e.dataTransfer.getData('text/plain')
+    if (!source || source === node.path) return
+
+    let targetPath = node.path
+    if (node.type === 'file') {
+      const parts = node.path.split('/')
+      parts.pop()
+      targetPath = parts.join('/')
+    }
+    
+    const sourceName = source.split('/').pop()
+    const target = targetPath ? `${targetPath}/${sourceName}` : sourceName!
+    
+    if (source !== target && !target.startsWith(source + '/')) {
+      moveNodeMutate({ source, target })
+    }
+  }
+
   if (node.type === 'file') {
     return (
       <div 
-        className="group flex justify-between items-center text-[13px] text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] cursor-pointer transition-colors duration-[var(--duration-fast)]"
-        onClick={() => openNote(node.note.id)}
+        draggable
+        onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        className={`group flex justify-between items-center text-[13px] text-[var(--color-text-primary)] cursor-pointer transition-colors duration-[var(--duration-fast)] ${isDragOver ? 'bg-[var(--color-accent)]/20 shadow-[inset_0_0_0_1px_var(--color-accent)]' : (isSelected ? 'bg-[var(--color-surface-hover)]' : 'hover:bg-[var(--color-surface-hover)]')}`}
+        onClick={(e) => { e.stopPropagation(); setSelectedPath(node.path); openNote(node.note.id, node.note.title, node.note.content) }}
       >
         <div className="flex-1 py-1.5 flex items-center gap-1.5 truncate" style={{ paddingLeft: `${depth * 12 + 8}px` }}>
           <IconFile />
@@ -228,9 +276,10 @@ function TreeNode({ node, depth = 0, creatingState, onCommitCreate, onCancelCrea
         </div>
         <button 
           className="opacity-0 group-hover:opacity-100 p-1 mr-2 text-[var(--color-text-muted)] hover:text-red-400 transition-opacity"
-          onClick={(e) => {
+          onClick={async (e) => {
             e.stopPropagation()
-            deleteNote(node.note.id)
+            await deleteNoteMutate(node.note.id)
+            removeDeletedNoteContext(node.note.id)
           }}
           title="Delete File"
         >
@@ -246,8 +295,13 @@ function TreeNode({ node, depth = 0, creatingState, onCommitCreate, onCancelCrea
   return (
     <>
       <div 
-        className="group flex justify-between items-center text-[13px] font-semibold text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] cursor-pointer transition-colors duration-[var(--duration-fast)] select-none"
-        onClick={() => toggleFolder(node.path)}
+        draggable
+        onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        className={`group flex justify-between items-center text-[13px] font-semibold text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] cursor-pointer transition-colors duration-[var(--duration-fast)] select-none ${isDragOver ? 'bg-[var(--color-accent)]/20 shadow-[inset_0_0_0_1px_var(--color-accent)] text-[var(--color-text-primary)]' : (isSelected ? 'bg-[var(--color-surface-hover)] text-[var(--color-text-primary)]' : 'hover:bg-[var(--color-surface-hover)]')}`}
+        onClick={(e) => { e.stopPropagation(); setSelectedPath(node.path); toggleFolder(node.path) }}
       >
         <div className="flex-1 py-1.5 flex items-center gap-1.5 truncate" style={{ paddingLeft: `${depth * 12 + 8}px` }}>
           <IconChevronRight className={`transition-transform duration-150 ${isExpanded ? 'rotate-90' : ''}`} />
@@ -290,13 +344,18 @@ function TreeNode({ node, depth = 0, creatingState, onCommitCreate, onCancelCrea
 
 export function AppShell() {
   const [sidebarOpen, setSidebarOpen] = useState(true)
-  const { notes, folders, tabs, activeId, contents, setContent, fetchNotes, createNewNote, createFolder, collapseAllFolders, saveNote } = useEditorStore()
+  const { tabs, activeId, contents, setContent, openNote, collapseAllFolders, setSelectedPath, setContentOnSave } = useEditorStore()
+  const { data: notesData, refetch: fetchNotes } = useNotesList()
+  const { data: foldersData } = useFoldersList()
+  const notes = notesData || []
+  const folders = foldersData || []
+  
+  const { mutateAsync: createNewNoteMutate } = useCreateNote()
+  const { mutateAsync: createFolderMutate } = useCreateFolder()
+  const { mutateAsync: saveNoteMutate } = useUpdateNote()
+
   const { theme, toggleTheme } = useTheme()
   const [creating, setCreating] = useState<{ type: 'file' | 'folder', parentPath: string } | null>(null)
-
-  useEffect(() => {
-    fetchNotes()
-  }, [fetchNotes])
 
   // Simple debounce logic for saving
   useEffect(() => {
@@ -304,30 +363,39 @@ export function AppShell() {
     const currentContent = contents[activeId]
     if (currentContent === undefined) return
     
+    const existingNote = notes.find(n => n.id === activeId)
+    if (!existingNote) return // The note was deleted or moved; do not attempt ghost saves.
+    
     let title = activeId.split('/').pop() || activeId
     const firstLineMatch = currentContent.match(/^#?\s*(.+)$/m)
     if (firstLineMatch) {
       title = firstLineMatch[1].trim()
     }
 
+    if (existingNote.content === currentContent && existingNote.title === title) {
+      return
+    }
+
     const handler = setTimeout(() => {
-      const existingNote = notes.find(n => n.id === activeId)
-      if (existingNote && existingNote.content === currentContent && existingNote.title === title) {
-        return
-      }
-      saveNote(activeId, title, currentContent)
+      saveNoteMutate({ id: activeId, req: { title, content: currentContent } }).then(() => {
+        setContentOnSave(activeId, title)
+      })
     }, 1000)
 
     return () => clearTimeout(handler)
-  }, [activeId, contents, saveNote, notes])
+  }, [activeId, contents, saveNoteMutate, notes, setContentOnSave])
 
   const activeContent = activeId ? (contents[activeId] ?? '') : ''
   const treeNodes = useMemo(() => buildTree(notes, folders), [notes, folders])
 
   // Determine where to create new files by default
   const getActiveParentPath = () => {
-    if (!activeId) return ''
-    const parts = activeId.split('/')
+    const { selectedPath } = useEditorStore.getState()
+    if (!selectedPath) return ''
+    if (folders.includes(selectedPath)) {
+      return selectedPath
+    }
+    const parts = selectedPath.split('/')
     parts.pop() // remove file name
     return parts.join('/')
   }
@@ -350,9 +418,19 @@ export function AppShell() {
 
   const handleCommitCreate = async (path: string) => {
     if (creating?.type === 'file') {
-      await createNewNote(path)
+      const content = '# ' + path.split('/').pop() + '\n\n'
+      const note = await createNewNoteMutate({ title: path, content })
+      openNote(note.id, note.title, note.content)
+      // Auto-expand the path created
+      const parts = note.id.split('/')
+      let currentPath = ''
+      for (let i = 0; i < parts.length - 1; i++) {
+        currentPath = currentPath ? currentPath + '/' + parts[i] : parts[i]
+        useEditorStore.getState().expandFolder(currentPath)
+      }
     } else if (creating?.type === 'folder') {
-      await createFolder(path)
+      await createFolderMutate({ path })
+      useEditorStore.getState().expandFolder(path)
     }
     setCreating(null)
   }
@@ -397,17 +475,17 @@ export function AppShell() {
 
       <aside
         className={[
-          'flex flex-col bg-[var(--color-sidebar-bg)] border-r border-[var(--color-border)] overflow-hidden transition-all duration-[var(--duration-slow)]',
+          'group/sidebar flex flex-col bg-[var(--color-sidebar-bg)] border-r border-[var(--color-border)] overflow-hidden transition-all duration-[var(--duration-slow)]',
           sidebarOpen ? 'w-[var(--width-sidebar)] opacity-100' : 'w-0 opacity-0 border-r-0',
         ].join(' ')}
         aria-label="Explorer"
         aria-hidden={!sidebarOpen}
       >
-        <div className="flex justify-between items-center px-4 py-3 shrink-0 border-b border-[var(--color-border-subtle)] group z-10 bg-[var(--color-sidebar-bg)]">
+        <div className="flex justify-between items-center px-4 py-3 shrink-0 border-b border-[var(--color-border-subtle)] z-10 bg-[var(--color-sidebar-bg)]">
           <span className="text-[11px] font-semibold tracking-widest uppercase text-[var(--color-text-secondary)] whitespace-nowrap overflow-hidden">
             Synapse Vault
           </span>
-          <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="flex items-center gap-1.5 opacity-0 group-hover/sidebar:opacity-100 transition-opacity">
             <button className="text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] p-1 rounded hover:bg-[var(--color-surface-hover)] transition-colors" onClick={() => handleStartCreate('file')} title="New File">
               <IconNewFile />
             </button>
@@ -422,9 +500,7 @@ export function AppShell() {
             </button>
           </div>
         </div>
-        <div className="flex-1 overflow-y-auto overflow-x-hidden py-2" onClick={() => {
-           // Optional: clear creating state or reset parent path to '' if clicked on empty area
-        }}>
+        <div className="flex-1 overflow-y-auto overflow-x-hidden py-2" onClick={() => setSelectedPath(null)}>
           {creating?.parentPath === '' && (
             <InlineInput 
               type={creating.type} 
@@ -455,7 +531,7 @@ export function AppShell() {
       </aside>
 
       <main className="flex flex-col overflow-hidden bg-[var(--color-editor-bg)] min-w-0">
-        <TabBar tabs={tabs} activeId={activeId} />
+        <TabBar tabs={tabs} activeId={activeId} onNewNote={() => handleStartCreate('file')} />
         {activeId ? (
           <MarkdownEditor
             key={activeId}

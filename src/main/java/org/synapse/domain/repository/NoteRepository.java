@@ -13,4 +13,5 @@ public interface NoteRepository {
     void delete(NoteId id);
     void createFolder(String path);
     List<String> findAllFolders();
+    void move(String source, String target);
 }
