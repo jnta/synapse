@@ -6,6 +6,8 @@ import { useTheme } from '@/core/hooks/useTheme'
 import { useNotesList, useFoldersList, useCreateNote, useCreateFolder, useUpdateNote, useDeleteNote, useMoveNode } from '@/features/notes/hooks/useNotes'
 
 import { IconExplorer, IconSun, IconMoon, IconTrash, IconFile, IconNewFile, IconEdit, IconNewFolder, IconRefresh, IconCollapseAll, IconChevronRight } from '@/core/components/Icons'
+import { Panel, Group, useDefaultLayout } from 'react-resizable-panels'
+import { ResizeHandle } from '@/core/components/ResizeHandle'
 
 // UI Helpers for Context Menu
 function ContextMenuItem({ onClick, icon, label, danger = false }: { onClick: () => void, icon?: React.ReactNode, label: string, danger?: boolean }) {
@@ -390,6 +392,11 @@ export function AppShell() {
   const [renaming, setRenaming] = useState<{ path: string, type: 'file'|'folder' } | null>(null)
   const [contextMenu, setContextMenu] = useState<{ x: number, y: number, type: 'file' | 'folder' | 'root', path: string } | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<{ type: 'file' | 'folder', path: string } | null>(null)
+  
+  const mainLayout = useDefaultLayout({ 
+    id: 'main-layout',
+    storage: localStorage 
+  })
 
   useEffect(() => {
     const hideMenu = () => setContextMenu(null)
@@ -564,9 +571,10 @@ export function AppShell() {
   }
 
   return (
-    <div className="grid h-full w-full overflow-hidden" style={{ gridTemplateColumns: 'var(--width-activitybar) auto 1fr' }}>
+    <div className="flex h-full w-full overflow-hidden bg-[var(--color-bg)]">
       <nav
-        className="flex flex-col items-center py-2 gap-0.5 bg-[var(--color-bg-secondary)] border-r border-[var(--color-border)] z-10 justify-between"
+        className="flex flex-col items-center py-2 gap-0.5 bg-[var(--color-bg-secondary)] border-r border-[var(--color-border)] z-10 justify-between shrink-0"
+        style={{ width: 'var(--width-activitybar)' }}
         aria-label="Activity bar"
       >
         <div className="flex flex-col gap-0.5 w-full items-center">
@@ -601,162 +609,177 @@ export function AppShell() {
         </div>
       </nav>
 
-      <aside
-        className={[
-          'group/sidebar flex flex-col bg-[var(--color-sidebar-bg)] border-r border-[var(--color-border)] overflow-hidden transition-all duration-[var(--duration-slow)]',
-          sidebarOpen ? 'w-[var(--width-sidebar)] opacity-100' : 'w-0 opacity-0 border-r-0',
-        ].join(' ')}
-        aria-label="Explorer"
-        aria-hidden={!sidebarOpen}
+      <Group 
+        orientation="horizontal" 
+        className="flex-1 overflow-hidden"
+        defaultLayout={mainLayout.defaultLayout}
+        onLayoutChanged={mainLayout.onLayoutChanged}
       >
-        <div className="flex justify-between items-center px-4 py-3 shrink-0 border-b border-[var(--color-border-subtle)] z-10 bg-[var(--color-sidebar-bg)] shadow-[0_4px_12px_rgba(0,0,0,0.02)]">
-          <span className="text-[10px] font-bold tracking-[0.2em] uppercase text-[var(--color-text-secondary)] whitespace-nowrap overflow-hidden">
-            Synapse Vault
-          </span>
-          <div className="flex items-center gap-1 opacity-0 group-hover/sidebar:opacity-100 transition-all duration-[var(--duration-normal)]">
-            <button className="text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] p-1.5 rounded-md hover:bg-[var(--color-surface-hover)]/60 transition-colors" onClick={() => handleStartCreate('file')} title="New File">
-              <IconNewFile size={14} />
-            </button>
-            <button className="text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] p-1.5 rounded-md hover:bg-[var(--color-surface-hover)]/60 transition-colors" onClick={() => handleStartCreate('folder')} title="New Folder">
-              <IconNewFolder size={14} />
-            </button>
-            <button className="text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] p-1.5 rounded-md hover:bg-[var(--color-surface-hover)]/60 transition-colors" onClick={() => fetchNotes()} title="Refresh Explorer">
-              <IconRefresh size={14} />
-            </button>
-            <button className="text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] p-1.5 rounded-md hover:bg-[var(--color-surface-hover)]/60 transition-colors" onClick={() => collapseAllFolders()} title="Collapse Folders">
-              <IconCollapseAll size={14} />
-            </button>
-          </div>
-        </div>
-        <div 
-          className="flex-1 overflow-y-auto overflow-x-hidden py-2" 
-          onClick={() => setSelectedPath(null)}
-          onContextMenu={(e) => {
-            e.preventDefault()
-            e.stopPropagation()
-            setContextMenu({ x: e.clientX, y: e.clientY, type: 'root', path: '' })
-          }}
-        >
-          {creating?.parentPath === '' && (
-            <InlineInput 
-              type={creating.type} 
-              depth={0} 
-              onCommit={handleCommitCreate} 
-              onCancel={() => setCreating(null)} 
-            />
-          )}
-          {treeNodes.length === 0 && !creating ? (
-            <div className="flex flex-col items-center justify-center pt-8 px-4 gap-3 text-center">
-               <p className="text-[12px] text-[var(--color-text-muted)]">You have not opened a folder.</p>
-               <button onClick={() => handleStartCreate('file')} className="px-3 py-1.5 bg-[var(--color-accent)] text-white text-[12px] rounded font-medium hover:opacity-90 transition-opacity w-full">Create Note</button>
-            </div>
-          ) : (
-            <div className="flex flex-col">
-              {treeNodes.map(node => (
-                <TreeNode 
-                  key={node.path} 
-                  node={node} 
-                  creatingState={creating}
-                  renamingState={renaming}
-                  onCommitCreate={handleCommitCreate}
-                  onCancelCreate={() => setCreating(null)}
-                  onCommitRename={handleCommitRename}
-                  onCancelRename={() => setRenaming(null)}
-                  onContextMenu={(e, type, path) => {
-                    e.preventDefault()
-                    e.stopPropagation()
-                    setSelectedPath(path)
-                    setContextMenu({ x: e.clientX, y: e.clientY, type, path })
-                  }}
-                  onDelete={(path, type) => setConfirmDelete({ path, type })}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-      </aside>
+        {sidebarOpen && (
+          <>
+            <Panel 
+              id="sidebar"
+              defaultSize="20%" 
+              minSize="10%" 
+              maxSize="30%" 
+              className="group/sidebar flex flex-col bg-[var(--color-sidebar-bg)] overflow-hidden transition-all duration-[var(--duration-fast)]"
+              aria-label="Explorer"
+            >
+              <div className="flex justify-between items-center px-4 py-3 shrink-0 border-b border-[var(--color-border-subtle)] z-10 bg-[var(--color-sidebar-bg)] shadow-[0_4px_12px_rgba(0,0,0,0.02)]">
+                <span className="text-[10px] font-bold tracking-[0.2em] uppercase text-[var(--color-text-secondary)] whitespace-nowrap overflow-hidden">
+                  Synapse Vault
+                </span>
+                <div className="flex items-center gap-1 opacity-0 group-hover/sidebar:opacity-100 transition-all duration-[var(--duration-normal)]">
+                  <button className="text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] p-1.5 rounded-md hover:bg-[var(--color-surface-hover)]/60 transition-colors" onClick={() => handleStartCreate('file')} title="New File">
+                    <IconNewFile size={14} />
+                  </button>
+                  <button className="text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] p-1.5 rounded-md hover:bg-[var(--color-surface-hover)]/60 transition-colors" onClick={() => handleStartCreate('folder')} title="New Folder">
+                    <IconNewFolder size={14} />
+                  </button>
+                  <button className="text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] p-1.5 rounded-md hover:bg-[var(--color-surface-hover)]/60 transition-colors" onClick={() => fetchNotes()} title="Refresh Explorer">
+                    <IconRefresh size={14} />
+                  </button>
+                  <button className="text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] p-1.5 rounded-md hover:bg-[var(--color-surface-hover)]/60 transition-colors" onClick={() => collapseAllFolders()} title="Collapse Folders">
+                    <IconCollapseAll size={14} />
+                  </button>
+                </div>
+              </div>
+              <div 
+                className="flex-1 overflow-y-auto overflow-x-hidden py-2" 
+                onClick={() => setSelectedPath(null)}
+                onContextMenu={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  setContextMenu({ x: e.clientX, y: e.clientY, type: 'root', path: '' })
+                }}
+              >
+                {creating?.parentPath === '' && (
+                  <InlineInput 
+                    type={creating.type} 
+                    depth={0} 
+                    onCommit={handleCommitCreate} 
+                    onCancel={() => setCreating(null)} 
+                  />
+                )}
+                {treeNodes.length === 0 && !creating ? (
+                  <div className="flex flex-col items-center justify-center pt-8 px-4 gap-3 text-center">
+                     <p className="text-[12px] text-[var(--color-text-muted)]">You have not opened a folder.</p>
+                     <button onClick={() => handleStartCreate('file')} className="px-3 py-1.5 bg-[var(--color-accent)] text-white text-[12px] rounded font-medium hover:opacity-90 transition-opacity w-full">Create Note</button>
+                  </div>
+                ) : (
+                  <div className="flex flex-col">
+                    {treeNodes.map(node => (
+                      <TreeNode 
+                        key={node.path} 
+                        node={node} 
+                        creatingState={creating}
+                        renamingState={renaming}
+                        onCommitCreate={handleCommitCreate}
+                        onCancelCreate={() => setCreating(null)}
+                        onCommitRename={handleCommitRename}
+                        onCancelRename={() => setRenaming(null)}
+                        onContextMenu={(e, type, path) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          setSelectedPath(path)
+                          setContextMenu({ x: e.clientX, y: e.clientY, type, path })
+                        }}
+                        onDelete={(path, type) => setConfirmDelete({ path, type })}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            </Panel>
+            <ResizeHandle />
+          </>
+        )}
 
-      <main className="flex flex-col overflow-hidden bg-[var(--color-editor-bg)] min-w-0">
-        <div className="flex-1 flex overflow-hidden">
-           {groups.map((group, index) => {
-             const activeContent = group.activeTabId ? (contents[group.activeTabId] ?? '') : ''
-             return (
-               <div 
-                 key={group.id} 
-                 className={`relative flex-1 flex flex-col min-w-0 ${index > 0 ? 'border-l border-[var(--color-border)]' : ''}`}
-                 onClick={() => setActiveGroup(group.id)}
-               >
-                 <TabBar 
-                   groupId={group.id}
-                   tabs={group.tabs} 
-                   activeId={group.activeTabId} 
-                   showCloseGroup={groups.length > 1}
-                    onCloseTab={(id) => {
-                      console.log("[AppShell] Tab close requested:", id)
-                      flushNote(id).then(() => {
-                        console.log("[AppShell] Flush done, closing tab:", id)
-                        closeTab(group.id, id)
-                      })
-                    }}
-                 />
-                 {group.activeTabId ? (
-                    <MarkdownEditor
-                      key={group.activeTabId}
-                      content={activeContent}
-                      onChange={(v) => { 
-                        if (group.activeTabId) {
-                          const current = useEditorStore.getState().contents[group.activeTabId]
-                          if (current !== v) {
-                            setContent(group.activeTabId, v)
-                            setNoteDirty(group.activeTabId, true)
-                          }
-                        }
+        <Panel id="editor-area" minSize="35%" className="flex flex-col overflow-hidden bg-[var(--color-editor-bg)]">
+          <Group orientation="horizontal">
+            {groups.map((group, index) => {
+              const activeContent = group.activeTabId ? (contents[group.activeTabId] ?? '') : ''
+              return (
+                <React.Fragment key={group.id}>
+                  {index > 0 && <ResizeHandle />}
+                  <Panel 
+                    minSize="15%" 
+                    className="relative flex flex-col min-w-0"
+                    onClick={() => setActiveGroup(group.id)}
+                  >
+                    <TabBar 
+                      groupId={group.id}
+                      tabs={group.tabs} 
+                      activeId={group.activeTabId} 
+                      showCloseGroup={groups.length > 1}
+                      onCloseTab={(id) => {
+                        console.log("[AppShell] Tab close requested:", id)
+                        flushNote(id).then(() => {
+                          console.log("[AppShell] Flush done, closing tab:", id)
+                          closeTab(group.id, id)
+                        })
                       }}
                     />
-                 ) : (
-                   <div className="flex-1 flex flex-col items-center justify-center text-[13px] text-[var(--color-text-muted)] gap-4">
-                      <div className="opacity-50">
-                        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2-2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path>
-                          <polyline points="14 2 14 8 20 8"></polyline>
-                        </svg>
+                    {group.activeTabId ? (
+                       <MarkdownEditor
+                         key={group.activeTabId}
+                         content={activeContent}
+                         onChange={(v) => { 
+                           if (group.activeTabId) {
+                             const current = useEditorStore.getState().contents[group.activeTabId]
+                             if (current !== v) {
+                               setContent(group.activeTabId, v)
+                               setNoteDirty(group.activeTabId, true)
+                             }
+                           }
+                         }}
+                       />
+                    ) : (
+                      <div className="flex-1 flex flex-col items-center justify-center text-[13px] text-[var(--color-text-muted)] gap-4">
+                         <div className="opacity-50">
+                           <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
+                             <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2-2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path>
+                             <polyline points="14 2 14 8 20 8"></polyline>
+                           </svg>
+                         </div>
+                         Click a note in the explorer or press <button className="font-semibold text-[color:var(--color-accent)] hover:underline" onClick={() => handleStartCreate('file')}>create a new file</button>.
                       </div>
-                      Click a note in the explorer or press <button className="font-semibold text-[color:var(--color-accent)] hover:underline" onClick={() => handleStartCreate('file')}>create a new file</button>.
-                   </div>
-                 )}
+                    )}
 
-                 {/* Edge Drop Zone for Split Right */}
-                 {isDraggingTab && (
-                   <div
-                     className="absolute right-0 top-0 bottom-0 w-1/4 z-50"
-                     onDragOver={(e) => {
-                       e.preventDefault()
-                       e.dataTransfer.dropEffect = 'move'
-                       setDragSplitTarget(group.id)
-                     }}
-                     onDragLeave={() => setDragSplitTarget(null)}
-                     onDrop={(e) => {
-                       e.preventDefault()
-                       setDragSplitTarget(null)
-                       setIsDraggingTab(false)
-                       try {
-                         const data = JSON.parse(e.dataTransfer.getData('application/json'))
-                         if (data.groupId && typeof data.tabIndex === 'number') {
-                           moveTabToNewGroup(data.groupId, data.tabIndex, group.id)
-                         }
-                       } catch (err) {}
-                     }}
-                   >
-                     {dragSplitTarget === group.id && (
-                       <div className="absolute inset-0 bg-[var(--color-accent)]/20 border-l-2 border-[var(--color-accent)] pointer-events-none transition-opacity" />
-                     )}
-                   </div>
-                 )}
-               </div>
-             )
-           })}
-        </div>
-      </main>
+                    {/* Edge Drop Zone for Split Right */}
+                    {isDraggingTab && (
+                      <div
+                        className="absolute right-0 top-0 bottom-0 w-1/4 z-50"
+                        onDragOver={(e) => {
+                          e.preventDefault()
+                          e.dataTransfer.dropEffect = 'move'
+                          setDragSplitTarget(group.id)
+                        }}
+                        onDragLeave={() => setDragSplitTarget(null)}
+                        onDrop={(e) => {
+                          e.preventDefault()
+                          setDragSplitTarget(null)
+                          setIsDraggingTab(false)
+                          try {
+                            const data = JSON.parse(e.dataTransfer.getData('application/json'))
+                            if (data.groupId && typeof data.tabIndex === 'number') {
+                              moveTabToNewGroup(data.groupId, data.tabIndex, group.id)
+                            }
+                          } catch (err) {}
+                        }}
+                      >
+                        {dragSplitTarget === group.id && (
+                          <div className="absolute inset-0 bg-[var(--color-accent)]/20 border-l-2 border-[var(--color-accent)] pointer-events-none transition-opacity" />
+                        )}
+                      </div>
+                    )}
+                  </Panel>
+                </React.Fragment>
+              )
+            })}
+          </Group>
+        </Panel>
+      </Group>
 
       {/* Custom Context Menu */}
       {contextMenu && (
