@@ -1,7 +1,7 @@
+import React, { useState } from 'react'
 import type { Tab } from '@/core/types/Tab'
+import { IconFile, IconSplitRight, IconCloseGroup } from '@/core/components/Icons'
 import { useEditorStore } from '@/features/editor/store/useEditorStore'
-import { useState } from 'react'
-
 interface TabItemProps {
   groupId: string
   tab: Tab
@@ -9,14 +9,7 @@ interface TabItemProps {
   isActive: boolean
 }
 
-function IconFile() {
-  return (
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="shrink-0 opacity-60 group-hover:opacity-100 transition-opacity">
-      <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path>
-      <polyline points="13 2 13 9 20 9"></polyline>
-    </svg>
-  )
-}
+
 
 function TabItem({ groupId, tab, index, isActive }: TabItemProps) {
   const { setActiveTab, closeTab, moveTab, setIsDraggingTab } = useEditorStore()
@@ -80,7 +73,7 @@ function TabItem({ groupId, tab, index, isActive }: TabItemProps) {
       ].join(' ')}
     >
       <div className={`transition-colors ${isActive ? 'text-[var(--color-accent)]' : ''}`}>
-        <IconFile />
+        <IconFile className="shrink-0 opacity-60 group-hover:opacity-100 transition-opacity" />
       </div>
       <span className="flex-1 overflow-hidden text-ellipsis text-left pt-0.5">{tab.name.replace(/\.md$/, '')}</span>
       <span
@@ -106,23 +99,7 @@ function TabItem({ groupId, tab, index, isActive }: TabItemProps) {
   )
 }
 
-function IconSplitRight() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-      <line x1="12" y1="3" x2="12" y2="21"></line>
-    </svg>
-  )
-}
 
-function IconCloseGroup() {
-   return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <line x1="18" y1="6" x2="6" y2="18"></line>
-      <line x1="6" y1="6" x2="18" y2="18"></line>
-    </svg>
-  )
-}
 
 
 interface TabBarProps {

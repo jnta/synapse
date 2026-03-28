@@ -5,114 +5,7 @@ import { useEditorStore } from '@/features/editor/store/useEditorStore'
 import { useTheme } from '@/core/hooks/useTheme'
 import { useNotesList, useFoldersList, useCreateNote, useCreateFolder, useUpdateNote, useDeleteNote, useMoveNode } from '@/features/notes/hooks/useNotes'
 
-function IconExplorer() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-    </svg>
-  )
-}
-
-function IconSun() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <circle cx="12" cy="12" r="5"></circle>
-      <line x1="12" y1="1" x2="12" y2="3"></line>
-      <line x1="12" y1="21" x2="12" y2="23"></line>
-      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-      <line x1="1" y1="12" x2="3" y2="12"></line>
-      <line x1="21" y1="12" x2="23" y2="12"></line>
-      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
-    </svg>
-  )
-}
-
-function IconMoon() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-    </svg>
-  )
-}
-
-function IconTrash() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <polyline points="3 6 5 6 21 6"></polyline>
-      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-    </svg>
-  )
-}
-
-function IconFile() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="shrink-0 text-[var(--color-text-muted)] group-hover:text-[var(--color-text-secondary)] transition-colors">
-      <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path>
-      <polyline points="13 2 13 9 20 9"></polyline>
-    </svg>
-  )
-}
-
-function IconNewFile() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-      <polyline points="14 2 14 8 20 8"></polyline>
-      <line x1="12" y1="18" x2="12" y2="12"></line>
-      <line x1="9" y1="15" x2="15" y2="15"></line>
-    </svg>
-  )
-}
-
-function IconEdit() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-    </svg>
-  )
-}
-
-function IconNewFolder() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
-      <line x1="12" y1="11" x2="12" y2="17"></line>
-      <line x1="9" y1="14" x2="15" y2="14"></line>
-    </svg>
-  )
-}
-
-function IconRefresh() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <polyline points="23 4 23 10 17 10"></polyline>
-      <polyline points="1 20 1 14 7 14"></polyline>
-      <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
-    </svg>
-  )
-}
-
-function IconCollapseAll() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <polyline points="4 14 12 6 20 14"></polyline>
-      <line x1="12" y1="6" x2="12" y2="22"></line>
-      <line x1="4" y1="2" x2="20" y2="2"></line>
-    </svg>
-  )
-}
-
-function IconChevronRight({ className = '' }: { className?: string }) {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`shrink-0 ${className}`}>
-      <polyline points="9 18 15 12 9 6"></polyline>
-    </svg>
-  )
-}
+import { IconExplorer, IconSun, IconMoon, IconTrash, IconFile, IconNewFile, IconEdit, IconNewFolder, IconRefresh, IconCollapseAll, IconChevronRight } from '@/core/components/Icons'
 
 // UI Helpers for Context Menu
 function ContextMenuItem({ onClick, icon, label, danger = false }: { onClick: () => void, icon?: React.ReactNode, label: string, danger?: boolean }) {
@@ -156,10 +49,11 @@ function buildTree(notes: any[], folders: string[]): FileNode[] {
     for (const part of parts) {
       if (!part) continue
       currentPath = currentPath ? currentPath + '/' + part : part
-      let node = current.children!.find(c => c.name === part && c.type === 'folder')
+      let node = (current.children || []).find(c => c.name === part && c.type === 'folder')
       if (!node) {
         node = { type: 'folder', name: part, path: currentPath, children: [] }
-        current.children!.push(node)
+        if (!current.children) current.children = []
+        current.children.push(node)
       }
       current = node
     }
@@ -173,7 +67,7 @@ function buildTree(notes: any[], folders: string[]): FileNode[] {
       currentPath = currentPath ? currentPath + '/' + parts[i] : parts[i]
       const isFile = i === parts.length - 1
       
-      let node = current.children!.find(c => c.name === parts[i] && c.type === (isFile ? 'file' : 'folder'))
+      let node = (current.children || []).find(c => c.name === parts[i] && c.type === (isFile ? 'file' : 'folder'))
       if (!node) {
         node = {
           type: isFile ? 'file' : 'folder',
@@ -182,7 +76,8 @@ function buildTree(notes: any[], folders: string[]): FileNode[] {
           children: isFile ? undefined : [],
           note: isFile ? note : undefined
         }
-        current.children!.push(node)
+        if (!current.children) current.children = []
+        current.children.push(node)
       }
       if (!isFile) {
         current = node
@@ -200,7 +95,7 @@ function buildTree(notes: any[], folders: string[]): FileNode[] {
     }
   }
   sortTree(root)
-  return root.children!
+  return root.children || []
 }
 
 // Inline input component for creating or renaming nodes
@@ -288,7 +183,7 @@ function TreeNode({ node, depth = 0, creatingState, renamingState, onCommitCreat
     }
     
     const sourceName = source.split('/').pop()
-    const target = targetPath ? `${targetPath}/${sourceName}` : sourceName!
+    const target = targetPath ? `${targetPath}/${sourceName}` : (sourceName || '')
     
     if (source !== target && !target.startsWith(source + '/')) {
       moveNodeMutate({ source, target })
@@ -320,7 +215,7 @@ function TreeNode({ node, depth = 0, creatingState, renamingState, onCommitCreat
         onClick={(e) => { e.stopPropagation(); setSelectedPath(node.path); openNote(node.note.id, node.note.title, node.note.content) }}
       >
         <div className="flex-1 py-1.5 flex items-center gap-1.5 truncate" style={{ paddingLeft: `${depth * 12 + 8}px` }}>
-          <IconFile />
+          <IconFile className="shrink-0 opacity-60 group-hover:opacity-100 transition-opacity" />
           <span className="truncate flex-1">{node.name.replace(/\.md$/, '')}</span>
         </div>
         <button 
@@ -427,22 +322,24 @@ export function AppShell() {
     const handles: number[] = []
 
     groups.forEach(g => {
-      if (!g.activeTabId) return
-      const currentContent = contents[g.activeTabId]
+      const tabId = g.activeTabId
+      if (!tabId) return
+
+      const currentContent = contents[tabId]
       if (currentContent === undefined) return
       
-      const existingNote = notes.find(n => n.id === g.activeTabId)
+      const existingNote = notes.find(n => n.id === tabId)
       if (!existingNote) return // The note was deleted or moved; do not attempt ghost saves.
       
-      const title = g.activeTabId.split('/').pop() || g.activeTabId
+      const title = tabId.split('/').pop() || tabId
 
       if (existingNote.content === currentContent && existingNote.title === title) {
         return
       }
 
       const handler = window.setTimeout(() => {
-        saveNoteMutate({ id: g.activeTabId!, req: { title, content: currentContent } }).then(() => {
-          setContentOnSave(g.activeTabId!, title)
+        saveNoteMutate({ id: tabId, req: { title, content: currentContent } }).then(() => {
+          setContentOnSave(tabId, title)
         })
       }, 1000)
       handles.push(handler)
@@ -658,7 +555,7 @@ export function AppShell() {
                    <MarkdownEditor
                      key={group.activeTabId}
                      content={activeContent}
-                     onChange={(v) => setContent(group.activeTabId!, v)}
+                     onChange={(v) => { if (group.activeTabId) setContent(group.activeTabId, v) }}
                    />
                  ) : (
                    <div className="flex-1 flex flex-col items-center justify-center text-[13px] text-[var(--color-text-muted)] gap-4">
