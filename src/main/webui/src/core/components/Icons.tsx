@@ -129,3 +129,17 @@ export function IconCloseGroup({ className = '', size = 15 }: IconProps) {
     </svg>
   )
 }
+export function IconVault({ className = '', size = 20 }: IconProps) {
+  return (
+    <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M22 12c0 2.2-4.5 4-10 4s-10-1.8-10-4" />
+      <path d="M2 17c0 2.2 4.5 4 10 4s10-1.8 10-4" />
+      <path d="M2 7c0 2.2 4.5 4 10 4s10-1.8 10-4" />
+      <path d="M2 12v5" />
+      <path d="M22 12v5" />
+      <path d="M2 7v5" />
+      <path d="M22 7v5" />
+      <ellipse cx="12" cy="7" rx="10" ry="4" />
+    </svg>
+  )
+}

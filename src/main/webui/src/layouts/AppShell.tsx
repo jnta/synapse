@@ -5,9 +5,11 @@ import { useEditorStore } from '@/features/editor/store/useEditorStore'
 import { useTheme } from '@/core/hooks/useTheme'
 import { useNotesList, useFoldersList, useCreateNote, useCreateFolder, useUpdateNote, useDeleteNote, useMoveNode } from '@/features/notes/hooks/useNotes'
 
-import { IconExplorer, IconSun, IconMoon, IconTrash, IconFile, IconNewFile, IconEdit, IconNewFolder, IconRefresh, IconCollapseAll, IconChevronRight } from '@/core/components/Icons'
+import { IconExplorer, IconSun, IconMoon, IconTrash, IconFile, IconNewFile, IconEdit, IconNewFolder, IconRefresh, IconCollapseAll, IconChevronRight, IconVault } from '@/core/components/Icons'
 import { Panel, Group, useDefaultLayout } from 'react-resizable-panels'
 import { ResizeHandle } from '@/core/components/ResizeHandle'
+import { useVaultStore } from '@/features/vault/store/useVaultStore'
+import { ManageVaultScreen } from '@/features/vault/components/ManageVaultScreen'
 
 // UI Helpers for Context Menu
 function ContextMenuItem({ onClick, icon, label, danger = false }: { onClick: () => void, icon?: React.ReactNode, label: string, danger?: boolean }) {
@@ -393,10 +395,17 @@ export function AppShell() {
   const [contextMenu, setContextMenu] = useState<{ x: number, y: number, type: 'file' | 'folder' | 'root', path: string } | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<{ type: 'file' | 'folder', path: string } | null>(null)
   
+  const { currentVault, fetchCurrentVault, isLoading: isVaultLoading } = useVaultStore()
+  const [showVaultManager, setShowVaultManager] = useState(false)
+
   const mainLayout = useDefaultLayout({ 
     id: 'main-layout',
     storage: localStorage 
   })
+
+  useEffect(() => {
+    fetchCurrentVault()
+  }, [fetchCurrentVault])
 
   useEffect(() => {
     const hideMenu = () => setContextMenu(null)
@@ -627,7 +636,7 @@ export function AppShell() {
             >
               <div className="flex justify-between items-center px-4 py-3 shrink-0 border-b border-[var(--color-border-subtle)] z-10 bg-[var(--color-sidebar-bg)] shadow-[0_4px_12px_rgba(0,0,0,0.02)]">
                 <span className="text-[10px] font-bold tracking-[0.2em] uppercase text-[var(--color-text-secondary)] whitespace-nowrap overflow-hidden">
-                  Synapse Vault
+                  {currentVault?.name || 'Synapse Vault'}
                 </span>
                 <div className="flex items-center gap-1 opacity-0 group-hover/sidebar:opacity-100 transition-all duration-[var(--duration-normal)]">
                   <button className="text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] p-1.5 rounded-md hover:bg-[var(--color-surface-hover)]/60 transition-colors" onClick={() => handleStartCreate('file')} title="New File">
@@ -689,6 +698,17 @@ export function AppShell() {
                     ))}
                   </div>
                 )}
+              </div>
+
+              {/* Vault Management Link at the bottom */}
+              <div className="p-3 border-t border-[var(--color-border-subtle)] bg-[var(--color-sidebar-bg)] shrink-0">
+                <button 
+                  onClick={() => setShowVaultManager(true)}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-[13px] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] transition-all group"
+                >
+                  <IconVault className="opacity-50 group-hover:opacity-100 group-hover:text-[var(--color-accent)] transition-all" size={16} />
+                  <span className="font-medium">Manage Vault</span>
+                </button>
               </div>
             </Panel>
             <ResizeHandle />
@@ -850,6 +870,11 @@ export function AppShell() {
           onCancel={() => setConfirmDelete(null)}
           confirmText="Delete Permanently"
         />
+      )}
+
+      {/* Vault Management Modal */}
+      {(showVaultManager || (!currentVault && !isVaultLoading)) && (
+        <ManageVaultScreen onClose={() => setShowVaultManager(false)} />
       )}
     </div>
   )

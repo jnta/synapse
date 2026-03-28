@@ -4,7 +4,6 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.synapse.domain.model.Note;
 import org.synapse.domain.model.NoteId;
 import org.synapse.domain.repository.NoteRepository;
-
 import org.jboss.logging.Logger;
 import org.jboss.logging.MDC;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -23,7 +22,7 @@ public class LocalFileNoteRepository implements NoteRepository {
     private static final String MD_EXTENSION = ".md";
     private static final String MDC_NOTE_ID = "noteId";
 
-    private final Path vaultPath;
+    private volatile Path vaultPath;
     private final AtomicFileStore fileStore;
 
     public LocalFileNoteRepository(
@@ -31,7 +30,16 @@ public class LocalFileNoteRepository implements NoteRepository {
             AtomicFileStore fileStore) {
         this.vaultPath = Path.of(vaultPathStr);
         this.fileStore = fileStore;
+    }
+
+    public synchronized void setVaultPath(Path path) {
+        this.vaultPath = path;
         initializeVault();
+        LOG.infof("Vault path updated to: %s", path);
+    }
+
+    public Path getVaultPath() {
+        return vaultPath;
     }
 
     private void initializeVault() {
