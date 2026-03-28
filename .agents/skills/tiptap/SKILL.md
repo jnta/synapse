@@ -1,8 +1,25 @@
-# Tiptap Documentation
+---
+name: Tiptap Markdown Editor
+description: Expertise in Tiptap-based Markdown editing, including custom extensions, synchronization, and layout integration for Synapse.
+---
 
-Tiptap is a headless rich-text editor framework built on top of ProseMirror that lets you build custom editors tailored to your needs. It provides a modular, framework-agnostic API with React, Vue, Svelte, and vanilla JavaScript support, allowing developers to add only the extensions they need while keeping bundle sizes small. The platform includes the open-source Tiptap Editor core, plus paid cloud services for real-time collaboration, comments, AI features, and document conversion.
+# 🧠 Synaptic Skill: Tiptap Markdown Editor
+
+
+## 🔗 Synaptic Trigger: When to Use
+This skill must be activated when:
+- **Modifying Editor Features:** Working on `MarkdownEditor.tsx` or any component in `src/main/webui/src/features/editor/`.
+- **Handling Synchronization:** Debugging or implementing Markdown input/output, file saving logic, or content reconciliation.
+- **Implementing Split Panes/Tabs:** Managing multiple editor instances and ensuring each maintains its correct state and focus.
+- **Visual Design:** Adjusting the styling, min-height, or scrolling behavior of the editor within the Electron shell.
+- **Adding Extensions:** Incorporating new Tiptap functionality like math support, code blocks, or custom wikilink rendering.
+
+Tiptap is a headless rich-text editor framework built on top of ProseMirror that lets you build custom editors tailored to your needs.
+ It provides a modular, framework-agnostic API with React, Vue, Svelte, and vanilla JavaScript support, allowing developers to add only the extensions they need while keeping bundle sizes small. The platform includes the open-source Tiptap Editor core, plus paid cloud services for real-time collaboration, comments, AI features, and document conversion.
 
 The Tiptap ecosystem consists of several integrated products: the Editor (core rich-text editing), Collaboration (real-time multi-user editing via Yjs), Comments (threaded discussions), Content AI (AI-powered content generation and editing), and Conversion (import/export to DOCX, PDF, Markdown). All cloud services are accessed through REST APIs with JWT authentication, enabling seamless integration into any application stack.
+
+## Core Patterns
 
 ## Editor Installation (React)
 

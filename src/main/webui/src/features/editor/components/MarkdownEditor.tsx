@@ -3,6 +3,11 @@ import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import { Markdown } from '@tiptap/markdown'
 import Placeholder from '@tiptap/extension-placeholder'
+import TaskList from '@tiptap/extension-task-list'
+import TaskItem from '@tiptap/extension-task-item'
+import Typography from '@tiptap/extension-typography'
+import Highlight from '@tiptap/extension-highlight'
+import Link from '@tiptap/extension-link'
 
 interface Props {
   content: string
@@ -13,15 +18,42 @@ export function MarkdownEditor({ content, onChange }: Props) {
   const [isReady, setIsReady] = useState(false)
   const editor = useEditor({
     extensions: [
-      StarterKit.configure(),
+      StarterKit.configure({
+        bulletList: {
+          keepMarks: true,
+          keepAttributes: false,
+        },
+        orderedList: {
+          keepMarks: true,
+          keepAttributes: false,
+        },
+      }),
       Markdown.configure(),
+
       Placeholder.configure({
-        placeholder: 'Synaptic spark goes here...',
+        placeholder: "Synaptic spark goes here...",
+      }),
+
+
+      TaskList,
+      TaskItem.configure({
+        nested: true,
+      }),
+      Typography,
+      Highlight.configure({
+        multicolor: true,
+      }),
+      Link.configure({
+        openOnClick: false,
+        HTMLAttributes: {
+          class: 'text-[var(--color-accent)] underline cursor-pointer',
+        },
       }),
     ],
     content: content || '',
     // @ts-ignore
     contentType: 'markdown',
+    immediatelyRender: false,
     onUpdate: ({ editor }) => {
       if (onChange) {
         const markdown = (editor.storage as any)?.markdown?.getMarkdown?.()
@@ -30,12 +62,15 @@ export function MarkdownEditor({ content, onChange }: Props) {
         }
       }
     },
+    onBeforeCreate: () => {
+      // Logic before creation if needed
+    },
     onCreate: () => {
       setIsReady(true)
     },
     editorProps: {
       attributes: {
-        class: 'tiptap focus:outline-none min-h-full',
+        class: 'tiptap focus:outline-none min-h-full whitespace-pre-wrap',
       },
     },
   })
@@ -45,7 +80,7 @@ export function MarkdownEditor({ content, onChange }: Props) {
       const currentMarkdown = (editor.storage as any)?.markdown?.getMarkdown?.()
       if (content !== currentMarkdown) {
         // @ts-ignore
-        editor.commands.setContent(content || '', { contentType: 'markdown' })
+        editor.commands.setContent(content || '', false, { contentType: 'markdown' })
       }
     }
   }, [content, editor, isReady])
@@ -67,3 +102,4 @@ export function MarkdownEditor({ content, onChange }: Props) {
     </div>
   )
 }
+

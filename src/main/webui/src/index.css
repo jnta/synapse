@@ -187,8 +187,16 @@ button {
   margin-bottom: 1em;
 }
 
+.tiptap ul {
+  list-style: disc;
+}
+
+.tiptap ol {
+  list-style: decimal;
+}
+
 .tiptap li p {
-  margin-bottom: 0.25em;
+  margin: 0;
 }
 
 .tiptap blockquote {
@@ -227,6 +235,43 @@ button {
   text-decoration: underline;
 }
 
+/* Task List styles */
+.tiptap ul[data-type="taskList"] {
+  list-style: none;
+  padding: 0;
+}
+
+.tiptap ul[data-type="taskList"] li {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 0.25em;
+}
+
+.tiptap ul[data-type="taskList"] li > label {
+  flex: 0 0 auto;
+  margin-right: 0.75em;
+  user-select: none;
+}
+
+.tiptap ul[data-type="taskList"] li > div {
+  flex: 1 1 auto;
+}
+
+.tiptap ul[data-type="taskList"] input[type="checkbox"] {
+  width: 0.95rem; /* Slightly smaller for a more elegant look */
+  height: 0.95rem;
+  margin-top: 0.35rem; 
+  cursor: pointer;
+  accent-color: var(--color-accent);
+}
+
+.tiptap ul[data-type="taskList"] li[data-checked="true"] > div > p {
+  text-decoration: line-through;
+  color: var(--color-text-muted);
+}
+
+
+
 /* Placeholder support */
 .tiptap p.is-editor-empty:first-child::before {
   content: attr(data-placeholder);
@@ -235,3 +280,4 @@ button {
   pointer-events: none;
   height: 0;
 }
+
