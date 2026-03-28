@@ -344,7 +344,8 @@ function TreeNode({ node, depth = 0, creatingState, onCommitCreate, onCancelCrea
 
 export function AppShell() {
   const [sidebarOpen, setSidebarOpen] = useState(true)
-  const { tabs, activeId, contents, setContent, openNote, collapseAllFolders, setSelectedPath, setContentOnSave } = useEditorStore()
+  const { groups, contents, setContent, openNote, collapseAllFolders, setSelectedPath, setContentOnSave, setActiveGroup, isDraggingTab, setIsDraggingTab, moveTabToNewGroup } = useEditorStore()
+  const [dragSplitTarget, setDragSplitTarget] = useState<string | null>(null)
   const { data: notesData, refetch: fetchNotes } = useNotesList()
   const { data: foldersData } = useFoldersList()
   const notes = notesData || []
@@ -359,33 +360,38 @@ export function AppShell() {
 
   // Simple debounce logic for saving
   useEffect(() => {
-    if (!activeId) return
-    const currentContent = contents[activeId]
-    if (currentContent === undefined) return
-    
-    const existingNote = notes.find(n => n.id === activeId)
-    if (!existingNote) return // The note was deleted or moved; do not attempt ghost saves.
-    
-    let title = activeId.split('/').pop() || activeId
-    const firstLineMatch = currentContent.match(/^#?\s*(.+)$/m)
-    if (firstLineMatch) {
-      title = firstLineMatch[1].trim()
-    }
+    const handles: number[] = []
 
-    if (existingNote.content === currentContent && existingNote.title === title) {
-      return
-    }
+    groups.forEach(g => {
+      if (!g.activeTabId) return
+      const currentContent = contents[g.activeTabId]
+      if (currentContent === undefined) return
+      
+      const existingNote = notes.find(n => n.id === g.activeTabId)
+      if (!existingNote) return // The note was deleted or moved; do not attempt ghost saves.
+      
+      let title = g.activeTabId.split('/').pop() || g.activeTabId
+      const firstLineMatch = currentContent.match(/^#?\s*(.+)$/m)
+      if (firstLineMatch) {
+        title = firstLineMatch[1].trim()
+      }
 
-    const handler = setTimeout(() => {
-      saveNoteMutate({ id: activeId, req: { title, content: currentContent } }).then(() => {
-        setContentOnSave(activeId, title)
-      })
-    }, 1000)
+      if (existingNote.content === currentContent && existingNote.title === title) {
+        return
+      }
 
-    return () => clearTimeout(handler)
-  }, [activeId, contents, saveNoteMutate, notes, setContentOnSave])
+      const handler = window.setTimeout(() => {
+        saveNoteMutate({ id: g.activeTabId!, req: { title, content: currentContent } }).then(() => {
+          setContentOnSave(g.activeTabId!, title)
+        })
+      }, 1000)
+      handles.push(handler)
+    })
 
-  const activeContent = activeId ? (contents[activeId] ?? '') : ''
+    return () => handles.forEach(h => clearTimeout(h))
+  }, [groups, contents, saveNoteMutate, notes, setContentOnSave])
+
+
   const treeNodes = useMemo(() => buildTree(notes, folders), [notes, folders])
 
   // Determine where to create new files by default
@@ -531,24 +537,70 @@ export function AppShell() {
       </aside>
 
       <main className="flex flex-col overflow-hidden bg-[var(--color-editor-bg)] min-w-0">
-        <TabBar tabs={tabs} activeId={activeId} onNewNote={() => handleStartCreate('file')} />
-        {activeId ? (
-          <MarkdownEditor
-            key={activeId}
-            content={activeContent}
-            onChange={(v) => setContent(activeId, v)}
-          />
-        ) : (
-          <div className="flex-1 flex flex-col items-center justify-center text-[13px] text-[var(--color-text-muted)] gap-4">
-             <div className="opacity-50">
-               <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
-                 <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2-2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path>
-                 <polyline points="14 2 14 8 20 8"></polyline>
-               </svg>
-             </div>
-             Click a note in the explorer or press <button className="font-semibold text-[color:var(--color-accent)] hover:underline" onClick={() => handleStartCreate('file')}>create a new file</button>.
-          </div>
-        )}
+        <div className="flex-1 flex overflow-hidden">
+           {groups.map((group, index) => {
+             const activeContent = group.activeTabId ? (contents[group.activeTabId] ?? '') : ''
+             return (
+               <div 
+                 key={group.id} 
+                 className={`relative flex-1 flex flex-col min-w-0 ${index > 0 ? 'border-l border-[var(--color-border)]' : ''}`}
+                 onClick={() => setActiveGroup(group.id)}
+               >
+                 <TabBar 
+                   groupId={group.id}
+                   tabs={group.tabs} 
+                   activeId={group.activeTabId} 
+                   showCloseGroup={groups.length > 1}
+                 />
+                 {group.activeTabId ? (
+                   <MarkdownEditor
+                     key={group.activeTabId}
+                     content={activeContent}
+                     onChange={(v) => setContent(group.activeTabId!, v)}
+                   />
+                 ) : (
+                   <div className="flex-1 flex flex-col items-center justify-center text-[13px] text-[var(--color-text-muted)] gap-4">
+                      <div className="opacity-50">
+                        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2-2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path>
+                          <polyline points="14 2 14 8 20 8"></polyline>
+                        </svg>
+                      </div>
+                      Click a note in the explorer or press <button className="font-semibold text-[color:var(--color-accent)] hover:underline" onClick={() => handleStartCreate('file')}>create a new file</button>.
+                   </div>
+                 )}
+
+                 {/* Edge Drop Zone for Split Right */}
+                 {isDraggingTab && (
+                   <div
+                     className="absolute right-0 top-0 bottom-0 w-1/4 z-50"
+                     onDragOver={(e) => {
+                       e.preventDefault()
+                       e.dataTransfer.dropEffect = 'move'
+                       setDragSplitTarget(group.id)
+                     }}
+                     onDragLeave={() => setDragSplitTarget(null)}
+                     onDrop={(e) => {
+                       e.preventDefault()
+                       setDragSplitTarget(null)
+                       setIsDraggingTab(false)
+                       try {
+                         const data = JSON.parse(e.dataTransfer.getData('application/json'))
+                         if (data.groupId && typeof data.tabIndex === 'number') {
+                           moveTabToNewGroup(data.groupId, data.tabIndex, group.id)
+                         }
+                       } catch (err) {}
+                     }}
+                   >
+                     {dragSplitTarget === group.id && (
+                       <div className="absolute inset-0 bg-[var(--color-accent)]/20 border-l-2 border-[var(--color-accent)] pointer-events-none transition-opacity" />
+                     )}
+                   </div>
+                 )}
+               </div>
+             )
+           })}
+        </div>
       </main>
     </div>
   )
