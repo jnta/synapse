@@ -67,6 +67,15 @@ function IconNewFile() {
   )
 }
 
+function IconEdit() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+    </svg>
+  )
+}
+
 function IconNewFolder() {
   return (
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -103,6 +112,29 @@ function IconChevronRight({ className = '' }: { className?: string }) {
       <polyline points="9 18 15 12 9 6"></polyline>
     </svg>
   )
+}
+
+// UI Helpers for Context Menu
+function ContextMenuItem({ onClick, icon, label, danger = false }: { onClick: () => void, icon?: React.ReactNode, label: string, danger?: boolean }) {
+  return (
+    <button 
+      className={[
+        "w-full flex items-center gap-2.5 text-left px-2 py-1.5 mx-1 rounded-sm transition-colors",
+         danger 
+           ? "hover:bg-red-500 hover:text-white text-red-500" 
+           : "hover:bg-[var(--color-accent)] hover:text-white text-[var(--color-text-primary)]"
+      ].join(' ')}
+      style={{ width: 'calc(100% - 8px)' }}
+      onClick={onClick}
+    >
+      {icon && <span className="opacity-80 shrink-0">{icon}</span>}
+      <span className="flex-1">{label}</span>
+    </button>
+  )
+}
+
+function ContextMenuSeparator() {
+  return <div className="h-px bg-[var(--color-border-subtle)] my-1 mx-1.5" />
 }
 
 // Tree helper types and functions
@@ -171,9 +203,9 @@ function buildTree(notes: any[], folders: string[]): FileNode[] {
   return root.children!
 }
 
-// Inline input component for creating nodes
-function InlineInput({ type, depth, onCommit, onCancel }: { type: 'file' | 'folder', depth: number, onCommit: (name: string) => void, onCancel: () => void }) {
-  const [value, setValue] = useState('')
+// Inline input component for creating or renaming nodes
+function InlineInput({ type, depth, initialValue = '', onCommit, onCancel }: { type: 'file' | 'folder', depth: number, initialValue?: string, onCommit: (name: string) => void, onCancel: () => void }) {
+  const [value, setValue] = useState(initialValue)
   const [error, setError] = useState(false)
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -208,12 +240,16 @@ function InlineInput({ type, depth, onCommit, onCancel }: { type: 'file' | 'fold
   )
 }
 
-function TreeNode({ node, depth = 0, creatingState, onCommitCreate, onCancelCreate }: { 
+function TreeNode({ node, depth = 0, creatingState, renamingState, onCommitCreate, onCancelCreate, onCommitRename, onCancelRename, onContextMenu }: { 
   node: FileNode, 
   depth?: number,
   creatingState: { parentPath: string, type: 'file' | 'folder' } | null,
+  renamingState: { path: string, type: 'file'|'folder' } | null,
   onCommitCreate: (path: string) => void,
-  onCancelCreate: () => void
+  onCancelCreate: () => void,
+  onCommitRename: (oldPath: string, newName: string, type: 'file'|'folder') => void,
+  onCancelRename: () => void,
+  onContextMenu: (e: React.MouseEvent, type: 'file' | 'folder', path: string) => void
 }) {
   const { openNote, expandedFolders, toggleFolder, selectedPath, setSelectedPath, removeDeletedNoteContext } = useEditorStore()
   const { mutateAsync: deleteNoteMutate } = useDeleteNote()
@@ -259,6 +295,18 @@ function TreeNode({ node, depth = 0, creatingState, onCommitCreate, onCancelCrea
     }
   }
 
+  if (renamingState?.path === node.path) {
+    return (
+      <InlineInput 
+        type={node.type} 
+        depth={depth} 
+        initialValue={node.type === 'file' ? node.name.replace(/\.md$/, '') : node.name}
+        onCommit={(newName) => onCommitRename(node.path, newName, node.type)}
+        onCancel={onCancelRename}
+      />
+    )
+  }
+
   if (node.type === 'file') {
     return (
       <div 
@@ -267,6 +315,7 @@ function TreeNode({ node, depth = 0, creatingState, onCommitCreate, onCancelCrea
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
+        onContextMenu={(e) => onContextMenu(e, 'file', node.path)}
         className={`group flex justify-between items-center text-[13px] text-[var(--color-text-primary)] cursor-pointer transition-colors duration-[var(--duration-fast)] ${isDragOver ? 'bg-[var(--color-accent)]/20 shadow-[inset_0_0_0_1px_var(--color-accent)]' : (isSelected ? 'bg-[var(--color-surface-hover)]' : 'hover:bg-[var(--color-surface-hover)]')}`}
         onClick={(e) => { e.stopPropagation(); setSelectedPath(node.path); openNote(node.note.id, node.note.title, node.note.content) }}
       >
@@ -302,6 +351,7 @@ function TreeNode({ node, depth = 0, creatingState, onCommitCreate, onCancelCrea
         onDrop={handleDrop}
         className={`group flex justify-between items-center text-[13px] font-semibold text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] cursor-pointer transition-colors duration-[var(--duration-fast)] select-none ${isDragOver ? 'bg-[var(--color-accent)]/20 shadow-[inset_0_0_0_1px_var(--color-accent)] text-[var(--color-text-primary)]' : (isSelected ? 'bg-[var(--color-surface-hover)] text-[var(--color-text-primary)]' : 'hover:bg-[var(--color-surface-hover)]')}`}
         onClick={(e) => { e.stopPropagation(); setSelectedPath(node.path); toggleFolder(node.path) }}
+        onContextMenu={(e) => onContextMenu(e, 'folder', node.path)}
       >
         <div className="flex-1 py-1.5 flex items-center gap-1.5 truncate" style={{ paddingLeft: `${depth * 12 + 8}px` }}>
           <IconChevronRight className={`transition-transform duration-150 ${isExpanded ? 'rotate-90' : ''}`} />
@@ -325,8 +375,12 @@ function TreeNode({ node, depth = 0, creatingState, onCommitCreate, onCancelCrea
               node={child} 
               depth={depth + 1} 
               creatingState={creatingState}
+              renamingState={renamingState}
               onCommitCreate={onCommitCreate}
               onCancelCreate={onCancelCreate}
+              onCommitRename={onCommitRename}
+              onCancelRename={onCancelRename}
+              onContextMenu={onContextMenu}
             />
           ))}
         </>
@@ -344,7 +398,7 @@ function TreeNode({ node, depth = 0, creatingState, onCommitCreate, onCancelCrea
 
 export function AppShell() {
   const [sidebarOpen, setSidebarOpen] = useState(true)
-  const { groups, contents, setContent, openNote, collapseAllFolders, setSelectedPath, setContentOnSave, setActiveGroup, isDraggingTab, setIsDraggingTab, moveTabToNewGroup } = useEditorStore()
+  const { groups, contents, setContent, openNote, collapseAllFolders, setSelectedPath, setContentOnSave, setActiveGroup, isDraggingTab, setIsDraggingTab, moveTabToNewGroup, removeDeletedNoteContext, renameNodeContext } = useEditorStore()
   const [dragSplitTarget, setDragSplitTarget] = useState<string | null>(null)
   const { data: notesData, refetch: fetchNotes } = useNotesList()
   const { data: foldersData } = useFoldersList()
@@ -354,9 +408,19 @@ export function AppShell() {
   const { mutateAsync: createNewNoteMutate } = useCreateNote()
   const { mutateAsync: createFolderMutate } = useCreateFolder()
   const { mutateAsync: saveNoteMutate } = useUpdateNote()
+  const { mutateAsync: deleteNoteMutate } = useDeleteNote()
+  const { mutateAsync: moveNodeMutate } = useMoveNode()
 
   const { theme, toggleTheme } = useTheme()
   const [creating, setCreating] = useState<{ type: 'file' | 'folder', parentPath: string } | null>(null)
+  const [renaming, setRenaming] = useState<{ path: string, type: 'file'|'folder' } | null>(null)
+  const [contextMenu, setContextMenu] = useState<{ x: number, y: number, type: 'file' | 'folder' | 'root', path: string } | null>(null)
+
+  useEffect(() => {
+    const hideMenu = () => setContextMenu(null)
+    window.addEventListener('click', hideMenu)
+    return () => window.removeEventListener('click', hideMenu)
+  }, [])
 
   // Simple debounce logic for saving
   useEffect(() => {
@@ -370,11 +434,7 @@ export function AppShell() {
       const existingNote = notes.find(n => n.id === g.activeTabId)
       if (!existingNote) return // The note was deleted or moved; do not attempt ghost saves.
       
-      let title = g.activeTabId.split('/').pop() || g.activeTabId
-      const firstLineMatch = currentContent.match(/^#?\s*(.+)$/m)
-      if (firstLineMatch) {
-        title = firstLineMatch[1].trim()
-      }
+      const title = g.activeTabId.split('/').pop() || g.activeTabId
 
       if (existingNote.content === currentContent && existingNote.title === title) {
         return
@@ -439,6 +499,31 @@ export function AppShell() {
       useEditorStore.getState().expandFolder(path)
     }
     setCreating(null)
+  }
+
+  const handleCommitRename = async (oldPath: string, newName: string, type: 'file' | 'folder') => {
+    let parentPath = ''
+    if (oldPath.includes('/')) {
+      const parts = oldPath.split('/')
+      parts.pop()
+      parentPath = parts.join('/')
+    }
+    
+    // Auto appends extension if needed
+    const finalName = (type === 'file' && !newName.endsWith('.md')) ? `${newName}.md` : newName
+    const target = parentPath ? `${parentPath}/${finalName}` : finalName
+    
+    if (oldPath !== target) {
+      await moveNodeMutate({ source: oldPath, target })
+      renameNodeContext(oldPath, target)
+    }
+    setRenaming(null)
+  }
+
+  const handleDeleteNode = async (path: string) => {
+    // Both files and folders can be removed via the same mutate endpoint.
+    await deleteNoteMutate(path)
+    removeDeletedNoteContext(path)
   }
 
   return (
@@ -506,7 +591,15 @@ export function AppShell() {
             </button>
           </div>
         </div>
-        <div className="flex-1 overflow-y-auto overflow-x-hidden py-2" onClick={() => setSelectedPath(null)}>
+        <div 
+          className="flex-1 overflow-y-auto overflow-x-hidden py-2" 
+          onClick={() => setSelectedPath(null)}
+          onContextMenu={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            setContextMenu({ x: e.clientX, y: e.clientY, type: 'root', path: '' })
+          }}
+        >
           {creating?.parentPath === '' && (
             <InlineInput 
               type={creating.type} 
@@ -527,8 +620,17 @@ export function AppShell() {
                   key={node.path} 
                   node={node} 
                   creatingState={creating}
+                  renamingState={renaming}
                   onCommitCreate={handleCommitCreate}
                   onCancelCreate={() => setCreating(null)}
+                  onCommitRename={handleCommitRename}
+                  onCancelRename={() => setRenaming(null)}
+                  onContextMenu={(e, type, path) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    setSelectedPath(path)
+                    setContextMenu({ x: e.clientX, y: e.clientY, type, path })
+                  }}
                 />
               ))}
             </div>
@@ -602,6 +704,62 @@ export function AppShell() {
            })}
         </div>
       </main>
+
+      {/* Custom Context Menu */}
+      {contextMenu && (
+        <div 
+          className="fixed z-[100] bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-md py-1.5 flex flex-col min-w-[200px] shadow-2xl text-[13px] backdrop-blur-md bg-opacity-95"
+          style={{ top: contextMenu.y, left: contextMenu.x }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {contextMenu.type === 'file' ? (
+            <>
+              <ContextMenuItem 
+                label="Rename" 
+                icon={<IconEdit />} 
+                onClick={() => { setRenaming({ path: contextMenu.path, type: 'file' }); setContextMenu(null) }} 
+              />
+              <ContextMenuSeparator />
+              <ContextMenuItem 
+                label="Delete" 
+                danger 
+                icon={<IconTrash />} 
+                onClick={() => { handleDeleteNode(contextMenu.path); setContextMenu(null) }} 
+              />
+            </>
+          ) : contextMenu.type === 'folder' ? (
+            <>
+              <ContextMenuItem 
+                label="New File" 
+                icon={<IconNewFile />} 
+                onClick={() => {
+                  useEditorStore.getState().expandFolder(contextMenu.path)
+                  setCreating({ type: 'file', parentPath: contextMenu.path })
+                  setContextMenu(null)
+                }} 
+              />
+              <ContextMenuSeparator />
+              <ContextMenuItem 
+                label="Rename" 
+                icon={<IconEdit />} 
+                onClick={() => { setRenaming({ path: contextMenu.path, type: 'folder' }); setContextMenu(null) }} 
+              />
+              <ContextMenuItem 
+                label="Delete" 
+                danger 
+                icon={<IconTrash />} 
+                onClick={() => { handleDeleteNode(contextMenu.path); setContextMenu(null) }} 
+              />
+            </>
+          ) : contextMenu.type === 'root' ? (
+            <ContextMenuItem 
+              label="New File" 
+              icon={<IconNewFile />} 
+              onClick={() => { setCreating({ type: 'file', parentPath: '' }); setContextMenu(null) }} 
+            />
+          ) : null}
+        </div>
+      )}
     </div>
   )
 }

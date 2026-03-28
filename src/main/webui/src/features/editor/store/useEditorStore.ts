@@ -34,6 +34,7 @@ interface EditorUIState {
   toggleFolder: (path: string) => void
   collapseAllFolders: () => void
   removeDeletedNoteContext: (id: string) => void
+  renameNodeContext: (oldPath: string, newPath: string) => void
 }
 
 export const useEditorStore = create<EditorUIState>()(
@@ -216,6 +217,45 @@ export const useEditorStore = create<EditorUIState>()(
         if (state.selectedPath === id) {
           state.selectedPath = null
         }
+      }),
+
+    renameNodeContext: (oldPath, newPath) =>
+      set((state) => {
+        const modifyPath = (p: string) => {
+          if (p === oldPath) return newPath
+          if (p.startsWith(oldPath + '/')) {
+            return newPath + p.substring(oldPath.length)
+          }
+          return p
+        }
+
+        state.groups.forEach(g => {
+          g.tabs.forEach(t => {
+            const newId = modifyPath(t.id)
+            if (newId !== t.id) {
+              const isExactMatch = oldPath === t.id
+              t.id = newId
+              if (isExactMatch) {
+                t.name = newPath.split('/').pop() || newPath
+              }
+            }
+          })
+          if (g.activeTabId) {
+            g.activeTabId = modifyPath(g.activeTabId)
+          }
+        })
+        
+        const newContents: Record<string, string> = {}
+        for (const [k, v] of Object.entries(state.contents)) {
+          newContents[modifyPath(k)] = v
+        }
+        state.contents = newContents
+
+        if (state.selectedPath) {
+          state.selectedPath = modifyPath(state.selectedPath)
+        }
+
+        state.expandedFolders = state.expandedFolders.map(modifyPath)
       }),
 
     setSelectedPath: (path) =>

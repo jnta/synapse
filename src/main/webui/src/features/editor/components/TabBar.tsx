@@ -9,6 +9,15 @@ interface TabItemProps {
   isActive: boolean
 }
 
+function IconFile() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="shrink-0 opacity-60 group-hover:opacity-100 transition-opacity">
+      <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path>
+      <polyline points="13 2 13 9 20 9"></polyline>
+    </svg>
+  )
+}
+
 function TabItem({ groupId, tab, index, isActive }: TabItemProps) {
   const { setActiveTab, closeTab, moveTab, setIsDraggingTab } = useEditorStore()
   const [isDragOver, setIsDragOver] = useState(false)
@@ -60,17 +69,20 @@ function TabItem({ groupId, tab, index, isActive }: TabItemProps) {
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
       className={[
-        'group relative flex items-center gap-1.5 px-3 min-w-[100px] max-w-[200px] h-full',
-        'text-[11px] border-r whitespace-nowrap overflow-hidden shrink-0 select-none',
-        'transition-colors duration-[var(--duration-fast)]',
+        'group relative flex items-center gap-2 px-3.5 min-w-[120px] max-w-[220px] h-full cursor-pointer',
+        'text-[12px] border-r whitespace-nowrap overflow-hidden shrink-0 select-none',
+        'transition-all duration-200',
         'border-r-[var(--color-border)]',
         isActive
-          ? 'bg-[var(--color-tab-bg-active)] text-[var(--color-text-primary)]'
-          : 'bg-[var(--color-tab-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)]',
+          ? 'bg-[var(--color-editor-bg)] text-[var(--color-text-primary)] font-medium'
+          : 'bg-transparent text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)]',
         isDragOver ? 'border-l-2 border-l-[var(--color-accent)]' : ''
       ].join(' ')}
     >
-      <span className="flex-1 overflow-hidden text-ellipsis">{tab.name}</span>
+      <div className={`transition-colors ${isActive ? 'text-[var(--color-accent)]' : ''}`}>
+        <IconFile />
+      </div>
+      <span className="flex-1 overflow-hidden text-ellipsis text-left pt-0.5">{tab.name.replace(/\.md$/, '')}</span>
       <span
         role="button"
         aria-label={`Close ${tab.name}`}
@@ -79,16 +91,16 @@ function TabItem({ groupId, tab, index, isActive }: TabItemProps) {
           closeTab(groupId, tab.id)
         }}
         className={[
-          'flex items-center justify-center w-4 h-4 rounded text-sm leading-none shrink-0',
-          'text-[var(--color-text-muted)] transition-colors duration-[var(--duration-fast)]',
-          'hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)]',
+          'flex items-center justify-center w-5 h-5 rounded-md text-[14px] leading-none shrink-0',
+          'text-[var(--color-text-muted)] transition-all duration-200',
+          'hover:bg-red-500/10 hover:text-red-400',
           isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100',
         ].join(' ')}
       >
         ×
       </span>
       {isActive && (
-        <span className="absolute bottom-0 left-0 right-0 h-px bg-[var(--color-accent)]" />
+        <span className="absolute top-0 left-0 right-0 h-0.5 bg-[var(--color-accent)]" />
       )}
     </button>
   )
