@@ -1,0 +1,347 @@
+import { create } from 'zustand'
+import { immer } from 'zustand/middleware/immer'
+import { enableMapSet } from 'immer'
+import type { Tab } from '@/core/types/Tab'
+
+enableMapSet()
+
+export interface TabGroup {
+  id: string
+  tabs: Tab[]
+  activeTabId: string | null
+}
+
+interface EditorUIState {
+  groups: TabGroup[]
+  activeGroupId: string
+  selectedPath: string | null
+  contents: Record<string, string>
+  expandedFolders: string[]
+  dirtyNotes: Record<string, boolean>
+  
+  openNote: (id: string, title: string, content: string) => void
+  closeTab: (groupId: string, tabId: string) => void
+  setActiveTab: (groupId: string, tabId: string) => void
+  setActiveGroup: (groupId: string) => void
+  moveTab: (sourceGroupId: string, sourceTabIndex: number, targetGroupId: string, targetTabIndex: number) => void
+  moveTabToNewGroup: (sourceGroupId: string, sourceTabIndex: number, afterGroupId: string) => void
+  splitGroup: (groupId: string, tabId: string) => void
+  closeGroup: (groupId: string) => void
+
+  isDraggingTab: boolean
+  setIsDraggingTab: (isDragging: boolean) => void
+
+  setSelectedPath: (path: string | null) => void
+  setContent: (id: string, content: string) => void
+  setContentOnSave: (id: string, title: string) => void
+  expandFolder: (path: string) => void
+  toggleFolder: (path: string) => void
+  collapseAllFolders: () => void
+  removeDeletedNoteContext: (id: string) => void
+  renameNodeContext: (oldPath: string, newPath: string) => void
+  setNoteDirty: (id: string, dirty: boolean) => void
+}
+
+export const useEditorStore = create<EditorUIState>()(
+  immer((set) => ({
+    groups: [{ id: 'main', tabs: [], activeTabId: null }],
+    activeGroupId: 'main',
+    selectedPath: null,
+    contents: {},
+    expandedFolders: [],
+    dirtyNotes: {},
+    isDraggingTab: false,
+
+    setIsDraggingTab: (isDragging) => set((state) => { state.isDraggingTab = isDragging }),
+
+    openNote: (id, title, content) => {
+      set((state) => {
+        let group = state.groups.find(g => g.id === state.activeGroupId)
+        if (!group) {
+          group = state.groups[0]
+          state.activeGroupId = group.id
+        }
+        
+        if (!group.tabs.find(t => t.id === id)) {
+          group.tabs.push({ id, name: title })
+        }
+        group.activeTabId = id
+        
+        // Update content if it's not present or not currently dirty
+        if (state.contents[id] === undefined || !state.dirtyNotes[id]) {
+          state.contents[id] = content
+        }
+      })
+    },
+
+    closeTab: (groupId, tabId) =>
+      set((state) => {
+        const group = state.groups.find(g => g.id === groupId)
+        if (!group) return
+        
+        const idx = group.tabs.findIndex((t) => t.id === tabId)
+        if (idx !== -1) {
+          group.tabs.splice(idx, 1)
+          if (group.activeTabId === tabId) {
+            group.activeTabId = group.tabs.length > 0 ? group.tabs[Math.max(0, idx - 1)].id : null
+          }
+        }
+        
+        if (group.tabs.length === 0 && state.groups.length > 1) {
+          const gIdx = state.groups.findIndex(g => g.id === groupId)
+          state.groups.splice(gIdx, 1)
+          if (state.activeGroupId === groupId) {
+             state.activeGroupId = state.groups[Math.max(0, gIdx - 1)].id
+          }
+        }
+
+        const isTabOpenAnywhere = state.groups.some(g => g.tabs.some(t => t.id === tabId))
+        if (!isTabOpenAnywhere) {
+          delete state.contents[tabId]
+          delete state.dirtyNotes[tabId]
+        }
+      }),
+
+    setActiveTab: (groupId, tabId) =>
+      set((state) => {
+        const group = state.groups.find(g => g.id === groupId)
+        if (group) {
+          group.activeTabId = tabId
+          state.activeGroupId = groupId
+          state.selectedPath = tabId
+        }
+      }),
+      
+    setActiveGroup: (groupId) =>
+      set((state) => {
+        state.activeGroupId = groupId
+      }),
+
+    moveTab: (sourceGroupId, sourceTabIndex, targetGroupId, targetTabIndex) =>
+      set((state) => {
+        const sourceGroup = state.groups.find(g => g.id === sourceGroupId)
+        const targetGroup = state.groups.find(g => g.id === targetGroupId)
+        if (!sourceGroup || !targetGroup) return
+
+        const [tab] = sourceGroup.tabs.splice(sourceTabIndex, 1)
+        
+        if (sourceGroup.activeTabId === tab.id) {
+           sourceGroup.activeTabId = sourceGroup.tabs.length > 0 ? sourceGroup.tabs[Math.max(0, sourceTabIndex - 1)]?.id || sourceGroup.tabs[0]?.id : null
+        }
+
+        targetGroup.tabs.splice(targetTabIndex, 0, tab)
+        targetGroup.activeTabId = tab.id
+        state.activeGroupId = targetGroupId
+
+        if (sourceGroup.tabs.length === 0 && state.groups.length > 1) {
+          const gIdx = state.groups.findIndex(g => g.id === sourceGroupId)
+          state.groups.splice(gIdx, 1)
+        }
+      }),
+
+    moveTabToNewGroup: (sourceGroupId, sourceTabIndex, afterGroupId) =>
+      set((state) => {
+        const sourceGroup = state.groups.find(g => g.id === sourceGroupId)
+        if (!sourceGroup) return
+        
+        const tab = sourceGroup.tabs[sourceTabIndex]
+        if (!tab) return
+
+        sourceGroup.tabs.splice(sourceTabIndex, 1)
+
+        if (sourceGroup.activeTabId === tab.id) {
+           sourceGroup.activeTabId = sourceGroup.tabs.length > 0 ? sourceGroup.tabs[Math.max(0, sourceTabIndex - 1)]?.id || sourceGroup.tabs[0]?.id : null
+        }
+
+        const newGroupId = Math.random().toString(36).substring(7)
+        const newGroup: TabGroup = {
+          id: newGroupId,
+          tabs: [{ ...tab }],
+          activeTabId: tab.id
+        }
+
+        const insertIdx = state.groups.findIndex(g => g.id === afterGroupId)
+        if (insertIdx !== -1) {
+           state.groups.splice(insertIdx + 1, 0, newGroup)
+        } else {
+           state.groups.push(newGroup)
+        }
+
+        state.activeGroupId = newGroupId
+
+        if (sourceGroup.tabs.length === 0 && state.groups.length > 1) {
+          const gIdx = state.groups.findIndex(g => g.id === sourceGroupId)
+          state.groups.splice(gIdx, 1)
+        }
+      }),
+
+    splitGroup: (groupId, tabId) =>
+      set((state) => {
+        const sourceGroup = state.groups.find(g => g.id === groupId)
+        if (!sourceGroup) return
+
+        const tab = sourceGroup.tabs.find(t => t.id === tabId)
+        if (!tab) return
+
+        const newGroupId = Math.random().toString(36).substring(7)
+        const newGroup: TabGroup = {
+          id: newGroupId,
+          tabs: [{ ...tab }],
+          activeTabId: tabId
+        }
+
+        const gIdx = state.groups.findIndex(g => g.id === groupId)
+        state.groups.splice(gIdx + 1, 0, newGroup)
+        state.activeGroupId = newGroupId
+      }),
+
+    closeGroup: (groupId) =>
+      set((state) => {
+        if (state.groups.length <= 1) return
+        const gIdx = state.groups.findIndex(g => g.id === groupId)
+        if (gIdx !== -1) {
+          state.groups.splice(gIdx, 1)
+          if (state.activeGroupId === groupId) {
+             state.activeGroupId = state.groups[Math.max(0, gIdx - 1)].id
+          }
+        }
+      }),
+
+    removeDeletedNoteContext: (id) =>
+      set((state) => {
+        const isTarget = (tabId: string) => tabId === id || tabId.startsWith(id + '/')
+
+        state.groups.forEach(g => {
+          const oldActiveIdx = g.tabs.findIndex(t => t.id === g.activeTabId)
+          const wasActiveTarget = g.activeTabId && isTarget(g.activeTabId)
+          
+          g.tabs = g.tabs.filter(t => !isTarget(t.id))
+          
+          if (wasActiveTarget) {
+            if (g.tabs.length === 0) {
+              g.activeTabId = null
+            } else {
+              const newIdx = Math.min(oldActiveIdx, g.tabs.length - 1)
+              g.activeTabId = g.tabs[Math.max(0, newIdx)].id
+            }
+          }
+        })
+        
+        // Remove empty secondary groups
+        if (state.groups.length > 1) {
+          state.groups = state.groups.filter(g => g.tabs.length > 0)
+          if (!state.groups.find(g => g.id === state.activeGroupId)) {
+            state.activeGroupId = state.groups[0].id
+          }
+        }
+
+        // Clean up contents, dirtyNotes, and selection
+        Object.keys(state.contents).forEach(key => {
+          if (isTarget(key)) delete state.contents[key]
+        })
+        Object.keys(state.dirtyNotes).forEach(key => {
+          if (isTarget(key)) delete state.dirtyNotes[key]
+        })
+        
+        if (state.selectedPath && isTarget(state.selectedPath)) {
+          state.selectedPath = null
+        }
+
+        // Also clean up expanded folders
+        state.expandedFolders = state.expandedFolders.filter(f => !isTarget(f))
+      }),
+
+    renameNodeContext: (oldPath, newPath) =>
+      set((state) => {
+        const modifyPath = (p: string) => {
+          if (p === oldPath) return newPath
+          if (p.startsWith(oldPath + '/')) {
+            return newPath + p.substring(oldPath.length)
+          }
+          return p
+        }
+
+        state.groups.forEach(g => {
+          g.tabs.forEach(t => {
+            const newId = modifyPath(t.id)
+            if (newId !== t.id) {
+              const isExactMatch = oldPath === t.id
+              t.id = newId
+              if (isExactMatch) {
+                t.name = newPath.split('/').pop() || newPath
+              }
+            }
+          })
+          if (g.activeTabId) {
+            g.activeTabId = modifyPath(g.activeTabId)
+          }
+        })
+        
+        const newContents: Record<string, string> = {}
+        for (const [k, v] of Object.entries(state.contents)) {
+          newContents[modifyPath(k)] = v
+        }
+        state.contents = newContents
+
+        if (state.selectedPath) {
+          state.selectedPath = modifyPath(state.selectedPath)
+        }
+
+        state.expandedFolders = state.expandedFolders.map(modifyPath)
+        
+        if (state.dirtyNotes[oldPath]) {
+          delete state.dirtyNotes[oldPath]
+          state.dirtyNotes[newPath] = true
+        }
+      }),
+
+    setSelectedPath: (path) =>
+      set((state) => {
+        state.selectedPath = path
+      }),
+
+    setContent: (id, content) =>
+      set((state) => {
+        state.contents[id] = content
+      }),
+      
+    setContentOnSave: (id, title) =>
+      set((state) => {
+        state.groups.forEach(g => {
+           const tab = g.tabs.find(t => t.id === id)
+           if (tab) tab.name = title
+        })
+      }),
+
+    expandFolder: (path) => 
+      set((state) => {
+        if (!state.expandedFolders.includes(path)) {
+           state.expandedFolders.push(path)
+        }
+      }),
+      
+    toggleFolder: (path) =>
+      set((state) => {
+        const idx = state.expandedFolders.indexOf(path)
+        if (idx === -1) {
+          state.expandedFolders.push(path)
+        } else {
+          state.expandedFolders.splice(idx, 1)
+        }
+      }),
+      
+    collapseAllFolders: () =>
+      set((state) => {
+        state.expandedFolders = []
+      }),
+
+    setNoteDirty: (id, dirty) =>
+      set((state) => {
+        if (dirty) {
+          state.dirtyNotes[id] = true
+        } else {
+          delete state.dirtyNotes[id]
+        }
+      }),
+  })),
+)
