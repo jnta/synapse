@@ -27,6 +27,23 @@ export interface MoveNodeRequest {
   target: string;
 }
 
+declare global {
+  interface Window {
+    electron?: {
+      getApiUrl: () => string;
+      getBackendPort: () => Promise<string | null>;
+      onBackendReady: (callback: (port: string) => void) => void;
+    };
+  }
+}
+
+const getBackendUrl = () => {
+  if (window.electron?.getApiUrl) {
+    return window.electron.getApiUrl();
+  }
+  return ''; // Default to relative path for dev mode
+};
+
 const getHeaders = (extra: Record<string, string> = {}) => ({
   'Content-Type': 'application/json',
   'X-Trace-Id': crypto.randomUUID(),
@@ -35,18 +52,18 @@ const getHeaders = (extra: Record<string, string> = {}) => ({
 
 export const notesApi = {
   getAll: async (): Promise<NoteDTO[]> => {
-    const res = await fetch('/api/v1/notes', { headers: getHeaders() });
+    const res = await fetch(`${getBackendUrl()}/api/v1/notes`, { headers: getHeaders() });
     if (!res.ok) throw new Error('Failed to fetch notes');
     return res.json();
   },
   getOne: async (id: string): Promise<NoteDTO> => {
     const encodedId = id.split('/').map(segment => encodeURIComponent(segment)).join('/');
-    const res = await fetch(`/api/v1/notes/${encodedId}`, { headers: getHeaders() });
+    const res = await fetch(`${getBackendUrl()}/api/v1/notes/${encodedId}`, { headers: getHeaders() });
     if (!res.ok) throw new Error('Failed to fetch note');
     return res.json();
   },
   create: async (req: CreateNoteRequest): Promise<NoteDTO> => {
-    const res = await fetch('/api/v1/notes', {
+    const res = await fetch(`${getBackendUrl()}/api/v1/notes`, {
       method: 'POST',
       headers: getHeaders(),
       body: JSON.stringify(req),
@@ -56,7 +73,7 @@ export const notesApi = {
   },
   update: async (id: string, req: UpdateNoteRequest): Promise<NoteDTO> => {
     const encodedId = id.split('/').map(segment => encodeURIComponent(segment)).join('/');
-    const res = await fetch(`/api/v1/notes/${encodedId}`, {
+    const res = await fetch(`${getBackendUrl()}/api/v1/notes/${encodedId}`, {
       method: 'PUT',
       headers: getHeaders(),
       body: JSON.stringify(req),
@@ -66,7 +83,7 @@ export const notesApi = {
   },
   delete: async (id: string): Promise<void> => {
     const encodedId = id.split('/').map(segment => encodeURIComponent(segment)).join('/');
-    const res = await fetch(`/api/v1/notes/${encodedId}`, {
+    const res = await fetch(`${getBackendUrl()}/api/v1/notes/${encodedId}`, {
       method: 'DELETE',
       headers: getHeaders(),
     });
@@ -74,7 +91,7 @@ export const notesApi = {
   },
 
   createFolder: async (req: CreateFolderRequest): Promise<void> => {
-    const res = await fetch('/api/v1/notes/folders', {
+    const res = await fetch(`${getBackendUrl()}/api/v1/notes/folders`, {
       method: 'POST',
       headers: getHeaders(),
       body: JSON.stringify(req),
@@ -82,12 +99,12 @@ export const notesApi = {
     if (!res.ok) throw new Error('Failed to create folder');
   },
   getFolders: async (): Promise<string[]> => {
-    const res = await fetch('/api/v1/notes/folders', { headers: getHeaders() });
+    const res = await fetch(`${getBackendUrl()}/api/v1/notes/folders`, { headers: getHeaders() });
     if (!res.ok) throw new Error('Failed to fetch folders');
     return res.json();
   },
   moveNode: async (req: MoveNodeRequest): Promise<void> => {
-    const res = await fetch('/api/v1/notes/move', {
+    const res = await fetch(`${getBackendUrl()}/api/v1/notes/move`, {
       method: 'POST',
       headers: getHeaders(),
       body: JSON.stringify(req),

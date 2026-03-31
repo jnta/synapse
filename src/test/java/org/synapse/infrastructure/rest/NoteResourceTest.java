@@ -23,7 +23,7 @@ class NoteResourceTest {
         .then()
             .statusCode(201)
             .body("title", equalTo("Test REST Title"))
-            .body("content", equalTo("Content REST"))
+            .body("content", equalTo("# Test REST Title\n\nContent REST"))
             .extract().path("id");
 
         given()

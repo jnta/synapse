@@ -1,0 +1,80 @@
+{
+  "name": "synapse-desktop",
+  "version": "1.0.0",
+  "description": "Synapse Desktop - AI-Native Cognitive Gym",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "package": "electron-forge package",
+    "make": "electron-forge make"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@electron-forge/cli": "^7.7.0",
+    "@electron-forge/maker-deb": "^7.7.0",
+    "@electron-forge/maker-rpm": "^7.7.0",
+    "@electron-forge/maker-zip": "^7.7.0",
+    "electron": "^34.3.0",
+    "electron-builder": "^26.8.1"
+  },
+  "dependencies": {
+    "electron-squirrel-startup": "^1.0.1"
+  },
+  "build": {
+    "appId": "com.synapse.desktop",
+    "productName": "Synapse",
+    "directories": {
+      "output": "dist"
+    },
+    "extraResources": [
+      {
+        "from": "target/synapse-1.0.0-SNAPSHOT-runner",
+        "to": "backend/synapse-runner"
+      },
+      {
+        "from": "src/main/webui/dist",
+        "to": "frontend"
+      }
+    ],
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "category": "Utility"
+    }
+  },
+  "config": {
+    "forge": {
+      "packagerConfig": {
+        "extraResource": [
+          "src/main/webui/dist",
+          "target/synapse-1.0.0-SNAPSHOT-runner"
+        ]
+      },
+      "makers": [
+        {
+          "name": "@electron-forge/maker-squirrel",
+          "config": {
+            "name": "synapse_desktop"
+          }
+        },
+        {
+          "name": "@electron-forge/maker-zip",
+          "platforms": [
+            "darwin"
+          ]
+        },
+        {
+          "name": "@electron-forge/maker-deb",
+          "config": {}
+        },
+        {
+          "name": "@electron-forge/maker-rpm",
+          "config": {}
+        }
+      ]
+    }
+  }
+}

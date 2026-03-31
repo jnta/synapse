@@ -32,7 +32,7 @@ class NoteUseCasesTest {
 
         assertNotNull(created.id());
         assertEquals("Test Title", created.title());
-        assertEquals("Test Content", created.content());
+        assertEquals("# Test Title\n\nTest Content", created.content());
         verify(mockRepository).save(any(Note.class));
     }
 
@@ -51,7 +51,7 @@ class NoteUseCasesTest {
         NoteDTO updated = useCases.updateNote("existing-id", cmd);
 
         assertEquals("New Title", updated.title());
-        assertEquals("New Content", updated.content());
+        assertEquals("# New Title\n\nNew Content", updated.content());
         verify(mockRepository).save(existingNote);
     }
 }

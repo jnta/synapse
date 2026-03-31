@@ -49,10 +49,23 @@ public class NoteUseCases {
 
         Path logicalPath = Path.of(newId.value() + ".md");
 
+        String content = command.content();
+        if (content == null) content = "";
+        if (content.startsWith("# ")) {
+            int firstNewline = content.indexOf('\n');
+            if (firstNewline > 0) {
+                content = "# " + command.title() + content.substring(firstNewline);
+            } else {
+                content = "# " + command.title();
+            }
+        } else {
+            content = "# " + command.title() + "\n\n" + content;
+        }
+
         Note note = Note.builder()
                 .id(newId)
                 .title(command.title())
-                .content(command.content())
+                .content(content)
                 .filePath(logicalPath)
                 .build();
 
@@ -64,7 +77,21 @@ public class NoteUseCases {
         Note note = noteRepository.findById(new NoteId(id))
                 .orElseThrow(() -> new IllegalArgumentException("Note not found with ID: " + id));
 
-        note.updateContent(command.title(), command.content());
+        String content = command.content();
+        if (content != null) {
+            if (content.startsWith("# ")) {
+                int firstNewline = content.indexOf('\n');
+                if (firstNewline > 0) {
+                    content = "# " + command.title() + content.substring(firstNewline);
+                } else {
+                    content = "# " + command.title();
+                }
+            } else {
+                content = "# " + command.title() + "\n\n" + content;
+            }
+        }
+
+        note.updateContent(command.title(), content);
         noteRepository.save(note);
         return NoteDTO.from(note);
     }
