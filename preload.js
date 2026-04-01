@@ -3,11 +3,13 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('electron', {
   getBackendPort: () => ipcRenderer.invoke('get-backend-port'),
   getApiUrl: () => {
-    // Port will be injected asynchronously or via query param if needed
-    // For now, we'll assume the frontend can fetch it or we use a global
     return window.__BACKEND_URL__ || '';
   },
   onBackendReady: (callback) => ipcRenderer.on('backend-port', (event, port) => callback(port))
+});
+
+contextBridge.exposeInMainWorld('electronAPI', {
+  onPortDetected: (callback) => ipcRenderer.on('backend-port', (_event, value) => callback(value))
 });
 
 // Listen for port updates and set a global for easy access

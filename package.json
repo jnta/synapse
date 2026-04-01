@@ -30,12 +30,12 @@
     },
     "extraResources": [
       {
-        "from": "target/synapse-1.0.0-SNAPSHOT-runner",
-        "to": "backend/synapse-runner"
+        "from": "target/quinoa/build",
+        "to": "frontend"
       },
       {
-        "from": "src/main/webui/dist",
-        "to": "frontend"
+        "from": "target/synapse-1.0.0-SNAPSHOT-runner",
+        "to": "backend/runner"
       }
     ],
     "linux": {
@@ -49,7 +49,7 @@
     "forge": {
       "packagerConfig": {
         "extraResource": [
-          "src/main/webui/dist",
+          "target/quinoa/build",
           "target/synapse-1.0.0-SNAPSHOT-runner"
         ]
       },

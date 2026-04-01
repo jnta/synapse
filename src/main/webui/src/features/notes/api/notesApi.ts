@@ -34,12 +34,16 @@ declare global {
       getBackendPort: () => Promise<string | null>;
       onBackendReady: (callback: (port: string) => void) => void;
     };
+    electronAPI?: {
+      onPortDetected: (callback: (port: string) => void) => void;
+    };
   }
 }
 
 const getBackendUrl = () => {
   if (window.electron?.getApiUrl) {
-    return window.electron.getApiUrl();
+    const url = window.electron.getApiUrl();
+    if (url) return url;
   }
   return ''; // Default to relative path for dev mode
 };

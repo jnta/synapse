@@ -408,10 +408,30 @@ export function AppShell() {
   }, [fetchCurrentVault])
 
   useEffect(() => {
-    const hideMenu = () => setContextMenu(null)
-    window.addEventListener('click', hideMenu)
-    return () => window.removeEventListener('click', hideMenu)
-  }, [])
+    // Listen for backend readiness to trigger initial data load
+    const setupListener = () => {
+      if (window.electronAPI?.onPortDetected) {
+        window.electronAPI.onPortDetected((port) => {
+          console.log(`[AppShell] Backend ready on port ${port}, refetching data...`);
+          fetchNotes();
+          fetchCurrentVault();
+        });
+      } else if (window.electron?.onBackendReady) {
+        // Fallback for older interface
+        window.electron.onBackendReady((_port) => {
+          console.log(`[AppShell] Backend sync (legacy), refetching...`);
+          fetchNotes();
+          fetchCurrentVault();
+        });
+      }
+    };
+
+    setupListener();
+
+    const hideMenu = () => setContextMenu(null);
+    window.addEventListener('click', hideMenu);
+    return () => window.removeEventListener('click', hideMenu);
+  }, [fetchNotes, fetchCurrentVault]);
 
   // Debounced Auto-save for all dirty notes
   const timeoutsRef = useRef<Record<string, number>>({})
