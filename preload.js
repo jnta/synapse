@@ -12,6 +12,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onPortDetected: (callback) => ipcRenderer.on('backend-port', (_event, value) => callback(value))
 });
 
+contextBridge.exposeInMainWorld('ELECTRON_API', {
+  selectDirectory: () => ipcRenderer.invoke('dialog:open-directory'),
+});
+
 // Listen for port updates and set a global for easy access
 ipcRenderer.on('backend-port', (event, port) => {
   window.__BACKEND_URL__ = `http://127.0.0.1:${port}`;

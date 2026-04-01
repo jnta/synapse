@@ -1,7 +1,6 @@
 # AGENTS.md — Synapse
 
-> **Synapse** is a local-first, AI-augmented Markdown note editor built for connected thinking.  
-> Notes are first-class citizens linked to each other via typed bidirectional links, semantic embeddings, and hybrid search.
+> **Synapse** is a local-first, AI-native cognitive gym built for connected thinking.
 
 ---
 
@@ -9,262 +8,137 @@
 
 | Dimension        | Detail                                                                 |
 |------------------|------------------------------------------------------------------------|
-| **Purpose**      | Linked note-taking with semantic search, graph view, and AI assistance |
+| **Purpose**      | AI-augmented linked note-taking with "Desirable Difficulty" mechanics |
 | **Philosophy**   | Local-first, privacy-first, human-readable Markdown files on disk      |
-| **Search**       | Hybrid: lexical (full-text) + semantic (vector) + ColBERT re-ranking   |
-| **Storage**      | Markdown files on the local filesystem (source of truth)               |
-| **Intelligence** | Local embeddings via sentence-transformers; no cloud calls for content |
+| **Search**       | Hybrid: lexical (full-text) + semantic (vector) + local RAG           |
+| **Storage**      | Markdown files on the local filesystem (Source of Truth)               |
+| **Intelligence** | Local LLM (Ollama/llama.cpp) + local embeddings (sqlite-vec)          |
 
 ---
 
 ## 2. Technology Stack
 
-### Backend — Quarkus (Java 25)
-
-| Layer          | Technology                              | Purpose                                     |
-|----------------|-----------------------------------------|---------------------------------------------|
-| Framework      | Quarkus 3.34.1                          | Supersonic Subatomic Java runtime           |
-| REST           | `quarkus-rest` + `quarkus-rest-jackson` | JAX-RS endpoints, JSON serialization        |
-| DI / CDI       | `quarkus-arc`                           | Dependency injection and bean wiring        |
-| Frontend host  | `quarkus-quinoa` 2.7.2                  | Serves the Vite/React SPA via Quarkus       |
-| Build          | Maven (mvnw wrapper)                    | Build, packaging, and dependency management |
-| Native Image   | GraalVM                                 | Compile Quarkus app to native image         |
-| Testing        | `quarkus-junit`, `rest-assured`         | Unit and integration tests                  |
-| Java version   | Java 25 (`maven.compiler.release=25`)   | Modern Java features                        |
-
 ### Desktop Client — Electron
+| Layer         | Technology            | Purpose                                           |
+|---------------|-----------------------|---------------------------------------------------|
+| App Wrapper   | Electron 34           | Native desktop integration and process management |
+| Process Mgmt  | Node.js Child Process | Manages Quarkus backend lifecycle                 |
+| IPC Bridge    | Preload + Context     | Secure communication between Frontend and Backend  |
 
-| Layer        | Technology                        | Purpose                                    |
-|--------------|-----------------------------------|--------------------------------------------|
-| App Wrapper  | Electron                          | Transform web app into desktop application |
+### Backend — Quarkus (Java 25)
+| Layer         | Technology                              | Purpose                                     |
+|---------------|-----------------------------------------|---------------------------------------------|
+| Framework     | Quarkus 3.34.1                          | High-performance Java backend               |
+| Build         | Maven (mvnw)                            | Build and dependency management             |
+| Native Image  | GraalVM                                 | Zero-dependency native executable for distribution |
+| Vector DB     | `sqlite-vec`                            | Local vector search & semantic embeddings   |
 
 ### Frontend — React + Vite
-
-| Layer        | Technology                        | Purpose                                    |
-|--------------|-----------------------------------|--------------------------------------------|
-| Framework    | React 19                          | UI component model                         |
-| Language     | TypeScript 5.9                    | Type-safe frontend                         |
-| Bundler      | Vite 8                            | Fast dev server and optimized builds       |
-| Linting      | ESLint 9 + typescript-eslint      | Code quality enforcement                   |
-| Dev Server   | Port 5173 (proxied by Quinoa)     | Hot Module Replacement in dev mode         |
-
-### Infrastructure / Planned
-
-| Concern        | Technology                              | Purpose                                       |
-|----------------|-----------------------------------------|-----------------------------------------------|
-| Vector search  | `sqlite-vec` + `all-MiniLM-L6-v2`      | Local semantic embeddings over Markdown vault |
-| Hybrid search  | Lucene (full-text) + vector re-ranking  | Lexical + semantic hybrid retrieval           |
-| File watching  | Java `WatchService` / Quarkus FS       | Detect Markdown changes on disk               |
-| Embeddings     | Local sentence-transformers (ONNX)      | Offline, zero-cloud embedding generation      |
+| Layer         | Technology                        | Purpose                                    |
+|---------------|-----------------------------------|--------------------------------------------|
+| Framework     | React 19                          | Component-driven UI                        |
+| Editor        | CodeMirror 6                      | High-performance Markdown editor           |
+| Bundler       | Vite 8                            | Fast development and optimized builds      |
+| Resizing      | `react-resizable-panels`          | Flexible IDE-like layout                   |
 
 ---
 
 ## 3. Running the Project
 
+### Development Mode
 ```bash
-# Start Quarkus backend (also boots Vite via Quinoa)
-./mvnw quarkus:dev
+# Start the full environment (Electron + Quarkus + Vite)
+npm start
 
-# Frontend only (from src/main/webui)
-cd src/main/webui && npm run dev
-
-# Run backend tests
-./mvnw test
-
-# Production package (JVM)
-./mvnw package
-
-# Production package (Native Image)
-./mvnw package -Dnative
+# This script:
+# 1. Boots Quarkus (which picks a random free port)
+# 2. Starts Vite dev server (on port 5173)
+# 3. Spawns Electron window
 ```
 
-Quarkus DevUI: `http://localhost:8080/q/dev`  
-React SPA: `http://localhost:8080` (served by Quinoa) or `http://localhost:5173` (direct Vite)
+### Production Build
+```bash
+# 1. Build Quarkus native runner
+./mvnw package -Dnative
+
+# 2. Build Frontend assets
+cd src/main/webui && npm run build
+
+# 3. Package Desktop App (creates AppImage/Distt)
+npm run package
+```
 
 ---
 
 ## 4. Architecture
 
-Synapse follows **Clean Architecture** with **Domain-Driven Design (DDD)**.  
-The rule is simple: dependencies point inward. Domain has zero outward dependencies.
+### 4.1 The Synapse Bridge (Electron ↔ Quarkus)
+Electron acts as the orchestrator. On startup, `main.js` spawns the Quarkus native runner with `QUARKUS_HTTP_PORT=0`.
+1. **Discovery:** Electron parses Quarkus logs to find the dynamic port.
+2. **Injection:** The port is passed to the frontend via `window.ELECTRON_API`.
+3. **Lifecycle:** When the Electron window closes, the backend process is killed.
 
-### 4.1 Backend Package Structure
-
+### 4.2 Frontend Structure (`src/main/webui/src/`)
 ```
-src/main/java/org/synapse/
-├── domain/                         # Zero external dependencies
-│   ├── model/                      # Note, Tag, Link, Vault
-│   ├── service/                    # LinkIntegrityService, DecayService
-│   └── repository/                 # NoteRepository (interface only)
-│
-├── application/                    # Orchestrates domain objects
-│   ├── dto/                        # NoteDTO, SearchResultDTO (React contracts)
-│   └── usecase/                    # SearchNotes, CreateNote, RenameNote,
-│                                   # GetBacklinks, PruneDecayedNotes
-│
-├── infrastructure/                 # Framework-specific implementations
-│   ├── persistence/                # LocalFileNoteRepository (reads/writes .md)
-│   ├── search/                     # LuceneIndexer, VectorIndexer, HybridSearch
-│   ├── embedding/                  # OnnxEmbeddingService (sqlite-vec integration)
-│   ├── watcher/                    # FileSystemWatcher (triggers re-index)
-│   └── rest/                       # JAX-RS Resources (Quarkus entry points)
-│
-└── configuration/                  # Quarkus CDI wiring, @ApplicationScoped beans
+├── core/                           # Design system and API clients
+├── features/                       # Domain-specific logic
+│   ├── editor/                     # CodeMirror 6 implementation & extensions
+│   ├── notes/                      # Note CRUD and management
+│   ├── vault/                      # Vault/Neural Archive management
+│   └── search/                     # Hybrid search interface
+└── layouts/                        # AppShell with resizable panels
 ```
 
-**Dependency rules:**
-- `domain` → nothing
-- `application` → `domain`
-- `infrastructure` → `application` + `domain`
-- `configuration` → all (wires everything together)
-
-### 4.2 Frontend Source Structure
-
-```
-src/main/webui/src/
-├── core/                           # Shared enterprise layer
-│   ├── api/                        # Base fetch config, interceptors
-│   ├── components/                 # Design system: Button, Input, Tooltip, Modal
-│   └── types/                      # Global types: NoteId, EntityId, SearchResult
-│
-├── features/                       # Vertical slices by domain
-│   ├── notes/                      # Note management
-│   │   ├── api/                    # Note-specific endpoints (CRUD, backlinks)
-│   │   ├── components/             # NoteEditor, NoteList, BacklinkPanel
-│   │   ├── hooks/                  # useNoteContent, useBacklinks, useNoteSync
-│   │   ├── store/                  # Note-specific state (Zustand)
-│   │   └── index.ts                # Public API — only import from here
-│   │
-│   ├── graph-view/                 # Knowledge graph visualization
-│   │   ├── components/             # GraphCanvas, NodeTooltip, DecayHeatmap
-│   │   ├── hooks/                  # useGraphData, useNodeSelection
-│   │   └── index.ts
-│   │
-│   └── search/                     # Global hybrid search
-│       ├── api/                    # Search endpoints (lexical + semantic)
-│       ├── components/             # SearchBar, SearchResultCard, FilterPanel
-│       ├── hooks/                  # useSearch, useSearchHistory
-│       └── index.ts
-│
-└── layouts/                        # App shell and routing
-    ├── AppShell.tsx                # Sidebar + main content area
-    └── Router.tsx                  # SPA routing
-```
-
-**Import discipline:**
-- Features are isolated — `notes` never imports from `graph-view` directly.
-- Cross-feature communication goes through `core/` or app-level state.
-- Always import features through their `index.ts` barrel export.
-
----
-
-## 5. Domain Model
-
-```
-Note
-  ├── id: NoteId (UUID or slug derived from filename)
-  ├── title: String
-  ├── content: String (raw Markdown)
-  ├── filePath: Path
-  ├── tags: Set<Tag>
-  ├── links: Set<Link>          ← outgoing [[wikilinks]]
-  ├── backlinks: Set<Link>      ← computed by LinkIntegrityService
-  ├── createdAt: Instant
-  ├── lastAccessedAt: Instant
-  └── state: NoteState          ← DORMANT | ACTIVE | MASTERED
-
-Link
-  ├── source: NoteId
-  ├── target: NoteId
-  └── label: LinkLabel          ← SUPPORTS | CONTRADICTS | EXTENDS | REFERENCES
-
-Tag
-  └── name: String
-
-NoteState
-  ├── DORMANT   — raw capture, hidden 48h, no links
-  ├── ACTIVE    — linked to a project, has user-generated content
-  └── MASTERED  — high link density, passed active recall
+### 4.3 Search Pipeline
+```mermaid
+graph TD
+    Query[User Query] --> Lexical[Lucene Full-Text]
+    Query --> Semantic[sqlite-vec Embeddings]
+    Lexical --> RRF[Reciprocal Rank Fusion]
+    Semantic --> RRF
+    RRF --> Results[Ranked Notes]
 ```
 
 ---
 
-## 6. API Contract (REST)
+## 5. Domain Models & Note States
 
-All endpoints are under `/api/v1`. JSON in/out.
-
-| Method | Path                          | Use Case           |
-|--------|-------------------------------|--------------------|
-| GET    | `/api/v1/notes`               | List all notes     |
-| GET    | `/api/v1/notes/{id}`          | Get note by ID     |
-| POST   | `/api/v1/notes`               | Create note        |
-| PUT    | `/api/v1/notes/{id}`          | Update note        |
-| DELETE | `/api/v1/notes/{id}`          | Delete note        |
-| GET    | `/api/v1/notes/{id}/backlinks`| Get backlinks      |
-| POST   | `/api/v1/search`              | Hybrid search      |
-| GET    | `/api/v1/graph`               | Graph data (nodes + edges) |
-
-Request/response shapes are defined as DTOs in `application/dto/` — these are the shared contracts between backend and frontend TypeScript types.
+- **Dormant:** Raw capture, hidden from main feed for 48h. Requires "Original Thought" to activate.
+- **Active:** Linked to a project, contains user-distilled content.
+- **Mastered:** High density of bidirectional links, passed active recall quizzes.
 
 ---
 
-## 7. Search Architecture
+## 6. Coding Conventions
 
-Synapse uses a three-stage hybrid search pipeline:
-
-```
-Query
-  │
-  ├── 1. Lexical (Lucene full-text)    → scored candidate set A
-  ├── 2. Semantic (sqlite-vec + ONNX)  → scored candidate set B
-  │
-  └── 3. Reciprocal Rank Fusion (RRF)  → merged final ranking
-```
-
-- Embeddings are generated locally using `all-MiniLM-L6-v2` in ONNX format.
-- Lucene index is rebuilt on `FileSystemWatcher` events (file create/modify/delete).
-- Vector index is updated asynchronously off the main thread.
-- Search must respond in < 200ms for the user-visible UI path.
+- **CodeMirror Extensions:** Use `ViewPlugin` and `Decoration` for custom Markdown features (e.g., wikilink highlighting).
+- **Offline First:** No feature should rely on an internet connection.
+- **Type Safety:** Shared DTOs in `application/dto/` are the contract between Java and TypeScript.
+- **Friction Logic:** Do not automate synthesis. Force the user to interact with the text (bolding, summary quizzes).
 
 ---
 
-## 8. Coding Conventions
+## 7. Current Screens
 
-### General
-- No comments explaining *what* the code does. Comments are only for *why* when non-obvious.
-- All features are behind their `index.ts` barrel — no deep internal imports across features.
-- DTOs are immutable records. Domain models are rich objects with behavior.
-- Infrastructure classes implement domain interfaces — never the reverse.
+### 7.1 Vault Manager
+- **Initialization**: Dedicated screen for creating new vaults or opening existing local directories.
+- **Recent Archives**: Sidebar history for quick navigation between different knowledge bases.
+- **Vault Context**: Displays the current active vault name and path in the Explorer.
 
-### Backend (Java)
-- Use `record` for DTOs and value objects.
-- `@ApplicationScoped` for stateless services; `@Singleton` only when state is intentional.
-- Repository interfaces live in `domain.repository`; implementations in `infrastructure.persistence`.
-- JAX-RS resources are thin — they delegate immediately to use cases.
-- Use `Uni<T>` / `Multi<T>` for async I/O at the infrastructure boundary.
+### 7.2 Main Workspace (AppShell)
+- **Explorer Sidebar**: Hierarchical file tree with support for folders, notes, drag-and-drop moving, and context-menu operations (Create, Rename, Delete).
+- **Editor Area**: Multi-panel workspace using `react-resizable-panels`.
+- **Tab System**: Supports multiple open notes with dirty-state tracking and auto-save.
+- **Split Views**: Capability to drag tabs to the edge to split the editor into multiple groups.
 
-### Frontend (TypeScript / React)
-- Functional components only. No class components.
-- State: local `useState` for UI state, Zustand for feature-level shared state.
-- Async data fetching via custom hooks inside `features/*/hooks/`.
-- No inline styles. CSS Modules or Vanilla CSS with design tokens.
-- Component props are typed with explicit interfaces, never `any`.
+### 7.3 Markdown Editor
+- **Engine**: CodeMirror 6 with custom syntax highlighting.
+- **Extensions**: High-performance `[[wikilink]]` styling and interactive link detection.
+- **Auto-Sync**: Background debounced persistence to the local filesystem.
 
 ---
 
-## 9. Non-Negotiable Constraints
-
-1. **Offline-first:** Zero network calls for note content or embeddings. All AI runs locally.
-2. **Human-readable files:** Markdown on disk is the source of truth. The database is a cache.
-3. **Non-blocking UI:** Embedding generation and indexing must not block the main thread.
-4. **< 200ms search:** User-visible search results must be delivered within 200ms.
----
-
-## 10. Agent Skills
-
-Agent skills are specialized knowledge bases located in `.agents/skills/` that provide deep context for specific subsystems.
-
-| Skill | Path | Focus |
-|-------|------|-------|
-| **Tiptap Markdown Editor** | `.agents/skills/tiptap/SKILL.md` | Expertise in Tiptap integration, synchronization, and Markdown conversion. |
-
+## 8. Definition of Done (DoD)
+- **Privacy:** 100% offline. Zero network calls for note content.
+- **Speed:** UI latency for auto-linking/search < 200ms.
+- **Integrity:** Markdown remains the source of truth on disk.

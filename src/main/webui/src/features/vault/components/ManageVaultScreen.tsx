@@ -21,6 +21,14 @@ export function ManageVaultScreen({ onClose }: { onClose?: () => void }) {
     if (newVaultPath && newVaultName) await openVault(newVaultPath, newVaultName);
   };
 
+  const handleBrowse = async () => {
+    // @ts-ignore
+    const selectedPath = await window.ELECTRON_API?.selectDirectory();
+    if (selectedPath) {
+      setNewVaultPath(selectedPath);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-[2000] bg-[var(--color-bg)] text-[var(--color-text-primary)] font-sans flex overflow-hidden">
       {/* Global Exit Button */}
@@ -160,13 +168,24 @@ export function ManageVaultScreen({ onClose }: { onClose?: () => void }) {
 
                 <div className="flex flex-col gap-3">
                   <label className="text-[11px] font-bold text-[var(--color-text-muted)] uppercase tracking-widest ml-1">Absolute Path</label>
-                  <input 
-                    type="text" 
-                    className="w-full bg-[var(--color-bg-secondary)] border border-[var(--color-border-subtle)] rounded-2xl px-6 py-4 text-base focus:border-[var(--color-accent)] outline-none transition-all placeholder:text-[var(--color-text-muted)]"
-                    placeholder="/home/user/vault"
-                    value={newVaultPath}
-                    onChange={(e) => setNewVaultPath(e.target.value)}
-                  />
+                  <div className="flex gap-3">
+                    <input 
+                      type="text" 
+                      className="flex-1 bg-[var(--color-bg-secondary)] border border-[var(--color-border-subtle)] rounded-2xl px-6 py-4 text-base focus:border-[var(--color-accent)] outline-none transition-all placeholder:text-[var(--color-text-muted)] min-w-0"
+                      placeholder="/home/user/vault"
+                      value={newVaultPath}
+                      onChange={(e) => setNewVaultPath(e.target.value)}
+                    />
+                    <button 
+                      type="button"
+                      onClick={handleBrowse}
+                      className="px-6 py-4 bg-[var(--color-bg-secondary)] hover:bg-[var(--color-surface-hover)] border border-[var(--color-border-subtle)] rounded-2xl transition-all flex items-center justify-center gap-2 group shrink-0"
+                      title="Select Directory"
+                    >
+                      <span className="material-symbols-outlined text-[var(--color-text-muted)] group-hover:text-[var(--color-accent)] transition-colors">folder_open</span>
+                      <span className="text-[10px] font-bold text-[var(--color-text-muted)] group-hover:text-[var(--color-text-primary)] uppercase tracking-widest">Browse</span>
+                    </button>
+                  </div>
                 </div>
 
                 {error && (

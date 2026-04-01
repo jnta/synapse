@@ -4,6 +4,24 @@ export interface VaultInfo {
   lastAccessed: number;
 }
 
+declare global {
+  interface Window {
+    electron?: {
+      getApiUrl: () => string;
+      getBackendPort: () => Promise<string | null>;
+      onBackendReady: (callback: (port: string) => void) => void;
+    };
+  }
+}
+
+const getBackendUrl = () => {
+  if (window.electron?.getApiUrl) {
+    const url = window.electron.getApiUrl();
+    if (url) return url;
+  }
+  return '';
+};
+
 const getHeaders = (extra: Record<string, string> = {}) => ({
   'Content-Type': 'application/json',
   ...extra
@@ -11,17 +29,17 @@ const getHeaders = (extra: Record<string, string> = {}) => ({
 
 export const vaultApi = {
   getCurrent: async (): Promise<VaultInfo> => {
-    const res = await fetch('/api/v1/vault', { headers: getHeaders() });
+    const res = await fetch(`${getBackendUrl()}/api/v1/vault`, { headers: getHeaders() });
     if (!res.ok) throw new Error('Failed to fetch current vault');
     return res.json();
   },
   getRecent: async (): Promise<VaultInfo[]> => {
-    const res = await fetch('/api/v1/vault/recent', { headers: getHeaders() });
+    const res = await fetch(`${getBackendUrl()}/api/v1/vault/recent`, { headers: getHeaders() });
     if (!res.ok) throw new Error('Failed to fetch recent vaults');
     return res.json();
   },
   open: async (vault: Partial<VaultInfo>): Promise<VaultInfo> => {
-    const res = await fetch('/api/v1/vault/open', {
+    const res = await fetch(`${getBackendUrl()}/api/v1/vault/open`, {
       method: 'POST',
       headers: getHeaders(),
       body: JSON.stringify(vault),

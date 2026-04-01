@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
@@ -32,10 +32,15 @@ function startBackend() {
     }
   }
 
-  console.log(`Starting backend: ${backendPath}`);
+  console.log(`Starting backend process: ${backendPath}`);
+  const env = { ...process.env };
+  if (!app.isPackaged) {
+    env.QUARKUS_PROFILE = 'dev';
+  }
+
   backendProcess = spawn(backendPath, [], {
     stdio: 'pipe',
-    env: { ...process.env, QUARKUS_HTTP_PORT: '0' }
+    env: env
   });
 
   backendProcess.stdout.on('data', (data) => {
@@ -115,3 +120,18 @@ app.on('window-all-closed', () => {
 
 // IPC handler to provide the port to the frontend if it asks
 ipcMain.handle('get-backend-port', () => backendPort);
+
+// Native Directory Picker for Vault Initialization
+ipcMain.handle('dialog:open-directory', async () => {
+  const { canceled, filePaths } = await dialog.showOpenDialog({
+    title: 'Select Vault Location',
+    properties: ['openDirectory', 'createDirectory'],
+    buttonLabel: 'Initialize Vault Here'
+  });
+
+  if (canceled) {
+    return null;
+  } else {
+    return filePaths[0]; // Return the absolute system path
+  }
+});
