@@ -66,7 +66,7 @@ fun EditorScreen(viewModel: EditorViewModel) {
         AnimatedVisibility(visible = state.isSidebarVisible) {
             LeftNav(
                 notes = state.notes,
-                selectedNoteId = state.selectedNoteId,
+                selectedNoteId = state.noteId,
                 onEvent = viewModel::onEvent
             )
         }
@@ -81,6 +81,7 @@ fun EditorScreen(viewModel: EditorViewModel) {
             Column(modifier = Modifier.fillMaxSize()) {
                 BreadcrumbTrail(
                     navigationStack = state.navigationStack,
+                    activeNoteId = state.noteId,
                     notes = state.notes,
                     onEvent = viewModel::onEvent
                 )
@@ -102,14 +103,14 @@ fun EditorScreen(viewModel: EditorViewModel) {
                                 modifier = Modifier.align(Alignment.CenterHorizontally).padding(top = 100.dp),
                                 color = MaterialTheme.colors.primary
                             )
-                        } else if (state.selectedNoteId == null) {
+                        } else if (state.noteId.isEmpty()) {
                             EmptyEditorState(onEvent = viewModel::onEvent)
                         } else {
                             BlockEditorArea(
                                 blocks = state.blocks,
                                 focusedBlockId = state.focusedBlockId,
                                 shouldMask = (state.notes.find { 
-                                    it.id == state.selectedNoteId 
+                                    it.id == state.noteId 
                                 }?.viewCount ?: 0) >= 2,
                                 onEvent = viewModel::onEvent,
                                 modifier = Modifier.weight(1f).fillMaxWidth()
@@ -122,7 +123,9 @@ fun EditorScreen(viewModel: EditorViewModel) {
 
         // ContextPanel: Right Sidebar
         AnimatedVisibility(visible = state.isContextPanelVisible) {
-            ContextPanel(onEvent = viewModel::onEvent)
+            ContextPanel(
+                resonanceItems = state.resonanceItems
+            )
         }
     }
 
@@ -218,6 +221,7 @@ fun PerspectiveList() {
 @Composable
 fun BreadcrumbTrail(
     navigationStack: List<String>,
+    activeNoteId: String,
     notes: List<Note>,
     onEvent: (EditorUiEvent) -> Unit
 ) {
@@ -233,7 +237,7 @@ fun BreadcrumbTrail(
             Text(
                 text = noteTitle,
                 style = MaterialTheme.typography.caption,
-                color = if (index == navigationStack.lastIndex) Color.White else Color.Gray,
+                color = if (noteId == activeNoteId) Color.White else Color.Gray,
                 modifier = Modifier.clickable { onEvent(EditorUiEvent.SelectNote(noteId)) }
             )
             
@@ -249,30 +253,7 @@ fun BreadcrumbTrail(
     }
 }
 
-@Composable
-fun ContextPanel(@Suppress("UNUSED_PARAMETER") onEvent: (EditorUiEvent) -> Unit) {
-    Column(
-        modifier = Modifier
-            .width(SynapseDimensions.ContextPanelWidth)
-            .fillMaxHeight()
-            .background(SynapseColors.Panel)
-            .padding(16.dp)
-    ) {
-        Text(
-            text = "RESONANCE",
-            style = MaterialTheme.typography.overline,
-            color = Color.Gray.copy(alpha = 0.5f)
-        )
-        
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text(
-                text = "Press Ctrl+I to resonate",
-                style = MaterialTheme.typography.caption,
-                color = Color.Gray.copy(alpha = 0.4f)
-            )
-        }
-    }
-}
+
 
 @Composable
 fun EmptyEditorState(onEvent: (EditorUiEvent) -> Unit) {
@@ -405,7 +386,7 @@ fun NoteListItem(
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun BlockEditorArea(
-    blocks: List<TextBlock>,
+    blocks: List<NoteBlock>,
     focusedBlockId: String?,
     shouldMask: Boolean,
     onEvent: (EditorUiEvent) -> Unit,
@@ -421,12 +402,11 @@ fun BlockEditorArea(
 
     Box(modifier = modifier.padding(16.dp)) {
         LazyColumn(modifier = Modifier.fillMaxSize()) {
-            itemsIndexed(blocks, key = { _, block -> block.id }) { index, block ->
+            items(blocks, key = { block -> block.id }) { block ->
                 val focusRequester = remember { FocusRequester() }
                 focusRequesters[block.id] = focusRequester
 
                 BlockItem(
-                    index = index,
                     block = block,
                     isFocused = focusedBlockId == block.id,
                     shouldMask = shouldMask,
@@ -442,8 +422,7 @@ fun BlockEditorArea(
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun BlockItem(
-    index: Int,
-    block: TextBlock,
+    block: NoteBlock,
     isFocused: Boolean,
     shouldMask: Boolean,
     focusRequester: FocusRequester,
@@ -451,31 +430,26 @@ fun BlockItem(
 ) {
     var showSlashMenu by remember { mutableStateOf(false) }
     var textValue by remember(block.id) { 
-        mutableStateOf(androidx.compose.ui.text.input.TextFieldValue(block.rawContent)) 
+        mutableStateOf(androidx.compose.ui.text.input.TextFieldValue(block.content)) 
     }
 
-    LaunchedEffect(block.rawContent) {
-        if (textValue.text != block.rawContent) {
+    LaunchedEffect(block.content) {
+        if (textValue.text != block.content) {
             textValue = textValue.copy(
-                text = block.rawContent,
-                selection = androidx.compose.ui.text.TextRange(block.rawContent.length)
+                text = block.content,
+                selection = androidx.compose.ui.text.TextRange(block.content.length)
             )
         }
     }
-
-    val intent = parseIntent(textValue.text)
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .height(IntrinsicSize.Min)
-            .background(
-                if (intent == BlockIntent.Theory) Color.Gray.copy(alpha = 0.1f) 
-                else Color.Transparent
-            ),
+            .background(Color.Transparent),
         verticalAlignment = Alignment.Top
     ) {
-        BlockPrefix(index, intent, block)
+        BlockPrefix(block)
 
         // Drag Handle (Visual Placeholder)
         Icon(
@@ -483,7 +457,7 @@ fun BlockItem(
             contentDescription = "Reorder",
             tint = Color.Gray.copy(alpha = 0.5f),
             modifier = Modifier
-                .padding(top = 4.dp, end = 8.dp, start = if (intent != BlockIntent.Process) 8.dp else 4.dp)
+                .padding(top = 4.dp, end = 8.dp, start = 8.dp)
                 .size(20.dp)
         )
 
@@ -500,7 +474,6 @@ fun BlockItem(
                 isFocused = isFocused,
                 shouldMask = shouldMask,
                 focusRequester = focusRequester,
-                intent = intent,
                 onEvent = onEvent
             )
 

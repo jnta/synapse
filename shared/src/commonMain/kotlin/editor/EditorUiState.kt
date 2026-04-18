@@ -9,19 +9,30 @@ import dev.synapse.domain.model.Note
 
 
 @Immutable
-data class TextBlock(
+data class NoteBlock(
     val id: String,
-    val rawContent: String,
-    val astNode: NoteNode.BlockNode
+    val content: String,
+    val detectedAttributes: List<String> = emptyList(),
+    val astNode: NoteNode.BlockNode // Keeping for rendering logic
+)
+
+@Immutable
+data class ResonanceItem(
+    val id: String,
+    val title: String,
+    val snippet: String,
+    val tags: List<String> = emptyList()
 )
 
 @Immutable
 data class EditorUiState(
+    val noteId: String = "",
     val isLoading: Boolean = true,
     val notes: List<Note> = emptyList(),
-    val selectedNoteId: String? = null,
-    val navigationStack: List<String> = emptyList(), // Breadcrumb history
-    val blocks: List<TextBlock> = emptyList(),
+    val navigationStack: List<String> = emptyList(), // Session Breadcrumbs
+    val blocks: List<NoteBlock> = emptyList(),
+    val resonanceItems: List<ResonanceItem> = emptyList(),
+    val selectionMetadata: Map<String, String> = emptyMap(), // Dynamic attributes (e.g., "status" to "evergreen")
     val focusedBlockId: String? = null,
     val isSidebarVisible: Boolean = true,
     val isContextPanelVisible: Boolean = true,
@@ -33,6 +44,7 @@ data class EditorUiState(
 sealed interface EditorUiEvent {
     data object LoadNotes : EditorUiEvent
     data class SelectNote(val noteId: String) : EditorUiEvent
+    data class MapsTo(val noteId: String) : EditorUiEvent // Phase 2 requirement
     
     // Block events
     data class UpdateBlockContent(val blockId: String, val newContent: String) : EditorUiEvent
@@ -41,6 +53,7 @@ sealed interface EditorUiEvent {
     data class MoveBlock(val fromIndex: Int, val toIndex: Int) : EditorUiEvent
     data class FocusBlock(val blockId: String?) : EditorUiEvent
 
+    data object RequestResonance : EditorUiEvent // Phase 2 requirement
     data object CreateNewNote : EditorUiEvent
     data object ToggleSidebar : EditorUiEvent
     data object ToggleContextPanel : EditorUiEvent

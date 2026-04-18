@@ -14,20 +14,29 @@ The goal is to establish the three-column architecture before focusing on intern
 
 [x] NavigationState: Implement the BreadcrumbTrail at the top of the Center Viewport. It must observe the navigationStack to render the session history as clickable breadcrumbs.
 
-2. Phase 2: State Management & Event Schema (commonMain)
-Defining the "brain" of the editor before building the heavy UI components.
+2. Phase 2: State Management & Event Schema (commonMain) (DONE)
+Refactored Phase 2: State Management & Event Schema
+Moving from a rigid Enum to an Attribute-based Graph model.
 
-[ ] EditorUiState Definition:
+[x] EditorUiState Definition:
 
 Kotlin
 data class EditorUiState(
     val noteId: String = "",
-    val navigationStack: List<String> = emptyList(), // Breadcrumb history
+    val navigationStack: List<String> = emptyList(), // Session Breadcrumbs
     val blocks: List<NoteBlock> = emptyList(),
     val resonanceItems: List<ResonanceItem> = emptyList(),
-    val activeIntent: IntentType = IntentType.None
+    val selectionMetadata: Map<String, String> = emptyMap() // Dynamic attributes (e.g., "status" to "evergreen")
 )
-[ ] Event Handling: Implement EditorUiEvent for MapsTo(noteId), RequestResonance, and UpdateBlockContent.
+[x] Dynamic NoteBlock Model:
+
+Kotlin
+data class NoteBlock(
+    val id: String,
+    val content: String,
+    val detectedAttributes: List<String> = emptyList() // Extracted from [C], [R], [S] or AI
+)
+[x] Event Handling: Implement EditorUiEvent for MapsTo(noteId), RequestResonance, and UpdateBlockContent.
 
 3. Phase 3: Atomic Block Editor (The Core)
 Building the individual units of thought and their interaction logic.
@@ -36,9 +45,9 @@ Building the individual units of thought and their interaction logic.
 
 [ ] EditorBlock Component:
 
-[ ] BlockGutter: Implement a slot for the IntentIndicator (dynamic icon based on block prefix) and the drag_indicator.
+[ ] BlockGutter: Implement a slot for the IntentIndicator (dynamic icon based on syntax) and the drag_indicator.
 
-[ ] BlockTextField: Integrate BasicTextField with a custom VisualTransformation for real-time Markdown/Intent styling.
+[ ] BlockTextField: Integrate BasicTextField with a custom VisualTransformation for real-time Markdown styling.
 
 [ ] Focus Management: Implement FocusRequester logic so Enter creates a new block and automatically moves focus, while Backspace merges empty blocks.
 
@@ -62,7 +71,7 @@ Polishing for the power-user/TWM experience.
 
 [ ] Desktop UX: Implement hover states for the drag handles and smooth lateral "Slide" animations when navigating through the breadcrumb stack.
 
-[ ] Intent Parser: Logic to automatically detect [C], [R], or [S] at the start of a block to update the UI state.
+[ ] Metadata Parser: Logic to automatically detect tags or attributes at the start of a block to update the UI state.
 
 Implementation Verification
 Performance: Ensure no full-list recompositions during typing.

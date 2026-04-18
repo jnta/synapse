@@ -19,32 +19,9 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-enum class BlockIntent {
-    Fact, Theory, Hypothesis, Process, None
-}
-
-fun parseIntent(content: String): BlockIntent {
-    return when {
-        content.startsWith("[F]") -> BlockIntent.Fact
-        content.startsWith("[T]") -> BlockIntent.Theory
-        content.startsWith("[H]") -> BlockIntent.Hypothesis
-        content.startsWith("[P]") -> BlockIntent.Process
-        else -> BlockIntent.None
-    }
-}
-
 @Composable
-fun BlockPrefix(index: Int, intent: BlockIntent, block: TextBlock) {
-    if (intent == BlockIntent.Fact) {
-        Box(modifier = Modifier.width(4.dp).fillMaxHeight().background(Color.Blue))
-    } else if (intent == BlockIntent.Process) {
-        Text(
-            text = "${index + 1}.",
-            modifier = Modifier.padding(top = 4.dp, start = 8.dp),
-            color = Color.Gray,
-            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
-        )
-    } else if (block.astNode is editor.ast.NoteNode.BlockNode.ListItem) {
+fun BlockPrefix(block: NoteBlock) {
+    if (block.astNode is editor.ast.NoteNode.BlockNode.ListItem) {
         Box(
             modifier = Modifier
                 .padding(top = 10.dp, start = 8.dp, end = 4.dp)
@@ -62,18 +39,17 @@ fun BlockPrefix(index: Int, intent: BlockIntent, block: TextBlock) {
 fun BlockTextField(
     textValue: androidx.compose.ui.text.input.TextFieldValue,
     onValueChange: (androidx.compose.ui.text.input.TextFieldValue) -> Unit,
-    block: TextBlock,
+    block: NoteBlock,
     isFocused: Boolean,
     shouldMask: Boolean,
     focusRequester: FocusRequester,
-    intent: BlockIntent,
     onEvent: (EditorUiEvent) -> Unit
 ) {
     BasicTextField(
         value = textValue,
         onValueChange = onValueChange,
         visualTransformation = MarkdownVisualTransformation(shouldMask = shouldMask),
-        textStyle = getBlockTextStyle(block.astNode, intent),
+        textStyle = getBlockTextStyle(block.astNode),
         modifier = Modifier
             .fillMaxWidth()
             .focusRequester(focusRequester)
@@ -98,7 +74,7 @@ fun BlockTextField(
 }
 
 @Composable
-fun getBlockTextStyle(node: editor.ast.NoteNode.BlockNode, intent: BlockIntent): TextStyle {
+fun getBlockTextStyle(node: editor.ast.NoteNode.BlockNode): TextStyle {
     return when (node) {
         is editor.ast.NoteNode.BlockNode.Heading -> {
             val fontSize = when (node.level) {
@@ -117,11 +93,7 @@ fun getBlockTextStyle(node: editor.ast.NoteNode.BlockNode, intent: BlockIntent):
             color = MaterialTheme.colors.onBackground,
             fontSize = 16.sp,
             lineHeight = 24.sp,
-            fontStyle = if (intent == BlockIntent.Hypothesis) {
-                androidx.compose.ui.text.font.FontStyle.Italic 
-            } else {
-                androidx.compose.ui.text.font.FontStyle.Normal
-            }
+            fontStyle = androidx.compose.ui.text.font.FontStyle.Normal
         )
     }
 }

@@ -27,15 +27,7 @@ class EditorViewModel(
     private val coroutineScope: CoroutineScope,
     private val repository: NoteRepository
 ) {
-object EditorUtils {
-    fun generateId(): String = dev.synapse.domain.util.UUIDv7.generate()
 
-    fun createInitialBlock(): TextBlock = TextBlock(
-        id = generateId(), 
-        rawContent = "", 
-        astNode = editor.ast.NoteNode.BlockNode.Paragraph(generateId(), listOf())
-    )
-}
 
     private val _state = MutableStateFlow(EditorUiState())
     val state: StateFlow<EditorUiState> = _state.asStateFlow()
@@ -82,7 +74,7 @@ object EditorUtils {
             is EditorUiEvent.AddBlockAfter -> mutateBlocks(BlockAction.Add(event.blockId))
             is EditorUiEvent.RemoveBlock -> mutateBlocks(BlockAction.Remove(event.blockId))
             is EditorUiEvent.MoveBlock -> mutateBlocks(BlockAction.Move(event.fromIndex, event.toIndex))
-            is EditorUiEvent.FocusBlock -> _state.update { it.copy(focusedBlockId = event.blockId) }
+            is EditorUiEvent.FocusBlock -> _state.update { state -> state.copy(focusedBlockId = event.blockId) }
             else -> {}
         }
     }
@@ -90,6 +82,25 @@ object EditorUtils {
     private fun handleNoteEvent(event: EditorUiEvent): Boolean {
         return when (event) {
             is EditorUiEvent.SelectNote -> { selectNote(event.noteId); true }
+            is EditorUiEvent.MapsTo -> { selectNote(event.noteId); true }
+            is EditorUiEvent.RequestResonance -> { 
+                val mockResonance = listOf(
+                    ResonanceItem(
+                        EditorLogic.generateId(), 
+                        "Related Concept", 
+                        "Snippet of a related thought...", 
+                        listOf("Theory")
+                    ),
+                    ResonanceItem(
+                        EditorLogic.generateId(), 
+                        "Contradictory Note", 
+                        "This contradicts the current hypothesis...", 
+                        listOf("Fact", "Critical")
+                    )
+                )
+                _state.update { it.copy(resonanceItems = mockResonance) }
+                true 
+            }
             is EditorUiEvent.CreateNewNote -> { launchCreateNote(); true }
             is EditorUiEvent.SaveCurrentNote -> { handleSave(isCommit = false); true }
             is EditorUiEvent.CommitNote -> { handleSave(isCommit = true); true }
@@ -109,24 +120,17 @@ object EditorUtils {
     private fun handleSave(isCommit: Boolean, isAutoSave: Boolean = false) {
         val currentThought = _state.value.originalThought.length
         val minThought = _state.value.minThoughtLength
-        
-        if (isCommit || (currentThought < minThought && !isAutoSave)) {
-            if (currentThought >= minThought) {
-                _state.update { it.copy(showResonanceFilter = false) }
-                performSave(isAutoSave)
-            } else {
-                _state.update { it.copy(showResonanceFilter = true) }
-            }
-        } else {
-            performSave(isAutoSave)
-        }
-    }
 
-    private fun performSave(isAutoSave: Boolean) {
-        val selectedId = _state.value.selectedNoteId ?: return
-        val fullContent = _state.value.blocks.joinToString("\n\n") { it.rawContent }
+        if (isCommit && currentThought < minThought) {
+            _state.update { it.copy(showResonanceFilter = true) }
+            return
+        }
+
+        val selectedId = if (_state.value.noteId.isEmpty()) null else _state.value.noteId
+        if (selectedId == null) return
+        val fullContent = _state.value.blocks.joinToString("\n\n") { it.content }
         
-        val derivedTitle = _state.value.blocks.firstOrNull()?.rawContent
+        val derivedTitle = _state.value.blocks.firstOrNull()?.content
             ?.lineSequence()?.firstOrNull()?.removePrefix("# ")?.take(MAX_TITLE_LENGTH) ?: "Untitled"
 
         coroutineScope.launch {
@@ -155,35 +159,37 @@ object EditorUtils {
             val note = repository.getNoteById(noteId) ?: return@launch
             
             val initialBlocks = note.content.split("\n\n").map { 
-                TextBlock(
-                    id = EditorUtils.generateId(), 
-                    rawContent = it, 
-                    astNode = editor.ast.AstParser.parseBlock(EditorUtils.generateId(), it)
+                NoteBlock(
+                    id = EditorLogic.generateId(), 
+                    content = it, 
+                    detectedAttributes = EditorLogic.extractAttributes(it),
+                    astNode = editor.ast.AstParser.parseBlock(EditorLogic.generateId(), it)
                 ) 
             }
-            val blocks = initialBlocks.ifEmpty { listOf(EditorUtils.createInitialBlock()) }
+            val blocks = initialBlocks.ifEmpty { listOf(EditorLogic.createInitialBlock()) }
             
-            _state.update { 
-                val newStack = it.navigationStack.toMutableList()
-                if (newStack.lastOrNull() != noteId) {
-                    newStack.add(noteId)
-                }
-                it.copy(
-                    selectedNoteId = noteId,
-                    navigationStack = newStack,
+            _state.update { state ->
+                state.copy(
+                    noteId = noteId,
+                    navigationStack = EditorLogic.updateNavigationStack(state.navigationStack, noteId),
                     blocks = blocks,
                     focusedBlockId = blocks.firstOrNull()?.id
-                ) 
+                )
             }
         }
     }
+
+
 
     private fun updateBlockContent(blockId: String, newContent: String) {
         // 1. Local State (instantâneo): O estado armazena exatamente o texto puro digitado sem bloquear a UI.
         _state.update { state ->
             val newBlocks = state.blocks.map { block ->
                 if (block.id == blockId) {
-                    block.copy(rawContent = newContent)
+                    block.copy(
+                        content = newContent,
+                        detectedAttributes = EditorLogic.extractAttributes(newContent)
+                    )
                 } else {
                     block
                 }
@@ -212,47 +218,16 @@ object EditorUtils {
         }
     }
 
-    private sealed class BlockAction {
-        data class Add(val afterId: String) : BlockAction()
-        data class Remove(val id: String) : BlockAction()
-        data class Move(val from: Int, val to: Int) : BlockAction()
-    }
-
     private fun mutateBlocks(action: BlockAction) {
         _state.update { state ->
-            val newBlocks = state.blocks.toMutableList()
-            when (action) {
-                is BlockAction.Add -> {
-                    val index = state.blocks.indexOfFirst { it.id == action.afterId }
-                    if (index != -1) {
-                        val newBlock = EditorUtils.createInitialBlock()
-                        newBlocks.add(index + 1, newBlock)
-                        state.copy(blocks = newBlocks, focusedBlockId = newBlock.id)
-                    } else state
-                }
-                is BlockAction.Remove -> {
-                    if (state.blocks.size <= 1) return@update state
-                    val index = state.blocks.indexOfFirst { it.id == action.id }
-                    if (index == -1) return@update state
-                    newBlocks.removeAt(index)
-                    val newFocusId = if (index > 0) newBlocks[index - 1].id else newBlocks[0].id
-                    state.copy(blocks = newBlocks, focusedBlockId = newFocusId)
-                }
-                is BlockAction.Move -> {
-                    val block = newBlocks.removeAt(action.from)
-                    newBlocks.add(action.to, block)
-                    state.copy(blocks = newBlocks)
-                }
-            }
+            EditorLogic.mutateBlocks(state, action)
         }
     }
 
-
-
     private fun launchCreateNote() {
         coroutineScope.launch {
-            val newId = EditorUtils.generateId()
-            val initialBlock = EditorUtils.createInitialBlock()
+            val newId = EditorLogic.generateId()
+            val initialBlock = EditorLogic.createInitialBlock()
             val newNote = Note(
                 id = newId,
                 title = "Untitled",
@@ -265,11 +240,9 @@ object EditorUtils {
             repository.saveNote(newNote)
             
             _state.update { 
-                val newStack = it.navigationStack.toMutableList()
-                newStack.add(newId)
                 it.copy(
-                    selectedNoteId = newId,
-                    navigationStack = newStack,
+                    noteId = newId,
+                    navigationStack = EditorLogic.updateNavigationStack(it.navigationStack, newId),
                     blocks = listOf(initialBlock),
                     focusedBlockId = initialBlock.id,
                     showResonanceFilter = false,
