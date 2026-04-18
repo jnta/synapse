@@ -1,0 +1,44 @@
+# Detekt Config Overrides for Compose & Kotlin Multiplatform
+# As we use `buildUponDefaultConfig = true`, this file only contains our specific overrides.
+
+complexity:
+  LongParameterList:
+    active: true
+    functionThreshold: 8
+    constructorThreshold: 12
+    ignoreDefaultParameters: true
+    ignoreDataClasses: true
+    ignoreAnnotated: ['Composable'] # Composables often have many parameters
+  LongMethod:
+    active: true
+    threshold: 100 # UI methods in Compose tend to be slightly longer
+
+naming:
+  FunctionNaming:
+    active: true
+    # Allow Composable functions to start with uppercase letter (PascalCase)
+    ignoreAnnotated: ['Composable']
+
+style:
+  MagicNumber:
+    active: true
+    # UI development requires specific numbers (dp, alpha, etc).
+    # We ignore typical base numbers and those passed as named arguments (e.g., alpha = 0.5f).
+    ignoreNumbers: ['-1', '0', '0.5', '1', '2', '3', '4', '7', '8', '11', '12', '15', '16', '24', '31', '32', '48', '63', '64']
+    ignorePropertyDeclaration: true
+    ignoreNamedArgument: true
+    ignoreConstantDeclaration: true
+  WildcardImport:
+    active: false # Wildcard imports are common and idiomatic in Compose (e.g. androidx.compose.ui.*)
+  MaxLineLength:
+    active: true
+    maxLineLength: 120
+    excludePackageStatements: true
+    excludeImportStatements: true
+    excludeCommentStatements: true
+  ReturnCount:
+    active: true
+    max: 3
+    excludeLabeled: true
+    excludeReturnFromLambda: true
+    excludeGuardClauses: true

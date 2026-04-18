@@ -1,0 +1,61 @@
+CREATE TABLE IF NOT EXISTS Notes (
+    id TEXT NOT NULL PRIMARY KEY,
+    title TEXT NOT NULL,
+    content_raw TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    view_count INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS Attributes (
+    id TEXT NOT NULL PRIMARY KEY,
+    note_id TEXT NOT NULL,
+    attr_key TEXT NOT NULL,
+    attr_value TEXT NOT NULL,
+    FOREIGN KEY (note_id) REFERENCES Notes(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS Edges (
+    id TEXT NOT NULL PRIMARY KEY,
+    source_id TEXT NOT NULL,
+    target_id TEXT NOT NULL,
+    label TEXT NOT NULL,
+    FOREIGN KEY (source_id) REFERENCES Notes(id) ON DELETE CASCADE,
+    FOREIGN KEY (target_id) REFERENCES Notes(id) ON DELETE CASCADE
+);
+
+insertNote:
+INSERT OR REPLACE INTO Notes(id, title, content_raw, created_at, updated_at, view_count)
+VALUES (?, ?, ?, ?, ?, ?);
+
+updateNoteContent:
+UPDATE Notes SET content_raw = ?, updated_at = ? WHERE id = ?;
+
+deleteNote:
+DELETE FROM Notes WHERE id = ?;
+
+getNoteById:
+SELECT * FROM Notes WHERE id = ?;
+
+getAllNotes:
+SELECT * FROM Notes ORDER BY updated_at DESC;
+
+insertAttribute:
+INSERT OR REPLACE INTO Attributes(id, note_id, attr_key, attr_value)
+VALUES (?, ?, ?, ?);
+
+getAttributesForNote:
+SELECT * FROM Attributes WHERE note_id = ?;
+
+deleteAttributesForNote:
+DELETE FROM Attributes WHERE note_id = ?;
+
+insertEdge:
+INSERT OR REPLACE INTO Edges(id, source_id, target_id, label)
+VALUES (?, ?, ?, ?);
+
+getEdgesForNote:
+SELECT * FROM Edges WHERE source_id = ? OR target_id = ?;
+
+deleteEdgesForNote:
+DELETE FROM Edges WHERE source_id = ? OR target_id = ?;
