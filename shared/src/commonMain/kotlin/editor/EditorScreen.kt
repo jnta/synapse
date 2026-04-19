@@ -124,7 +124,8 @@ fun EditorScreen(viewModel: EditorViewModel) {
         // ContextPanel: Right Sidebar
         AnimatedVisibility(visible = state.isContextPanelVisible) {
             ContextPanel(
-                resonanceItems = state.resonanceItems
+                state = state,
+                onEvent = viewModel::onEvent
             )
         }
     }

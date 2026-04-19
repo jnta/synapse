@@ -31,6 +31,8 @@ data class EditorUiState(
     val notes: List<Note> = emptyList(),
     val navigationStack: List<String> = emptyList(), // Session Breadcrumbs
     val blocks: List<NoteBlock> = emptyList(),
+    val forwardLinks: List<Note> = emptyList(),
+    val backLinks: List<Note> = emptyList(),
     val resonanceItems: List<ResonanceItem> = emptyList(),
     val selectionMetadata: Map<String, String> = emptyMap(), // Dynamic attributes (e.g., "status" to "evergreen")
     val focusedBlockId: String? = null,

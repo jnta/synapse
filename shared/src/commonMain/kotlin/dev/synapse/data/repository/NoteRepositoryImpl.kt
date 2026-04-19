@@ -23,35 +23,20 @@ class NoteRepositoryImpl(
             .mapToList(Dispatchers.IO)
             .map { notes ->
                 notes.map { noteEntity ->
-                    val attributes = queries.getAttributesForNote(noteEntity.id).executeAsList().map {
-                        Attribute(it.id, it.attr_key, it.attr_value)
-                    }
-                    val edges = queries.getEdgesForNote(noteEntity.id, noteEntity.id).executeAsList().map {
-                        Edge(it.id, it.source_id, it.target_id, it.label)
-                    }
-                    Note(
-                        noteEntity.id,
-                        noteEntity.title,
-                        noteEntity.content_raw,
-                        attributes,
-                        edges,
-                        noteEntity.created_at,
-                        noteEntity.updated_at,
-                        noteEntity.view_count.toInt()
-                    )
+                    mapToNote(noteEntity)
                 }
             }
     }
 
-    override suspend fun getNoteById(id: String): Note? = withContext(Dispatchers.IO) {
-        val noteEntity = queries.getNoteById(id).executeAsOneOrNull() ?: return@withContext null
-        val attributes = queries.getAttributesForNote(id).executeAsList().map {
+    private fun mapToNote(noteEntity: dev.synapse.database.Notes): Note {
+        val attributes = queries.getAttributesForNote(noteEntity.id).executeAsList().map {
             Attribute(it.id, it.attr_key, it.attr_value)
         }
-        val edges = queries.getEdgesForNote(id, id).executeAsList().map {
+        val edges = queries.getEdgesForNote(noteEntity.id, noteEntity.id).executeAsList().map {
             Edge(it.id, it.source_id, it.target_id, it.label)
         }
-        Note(
+        val embedding = queries.getEmbedding(noteEntity.id).executeAsOneOrNull()?.let { fromBlob(it) }
+        return Note(
             noteEntity.id,
             noteEntity.title,
             noteEntity.content_raw,
@@ -59,8 +44,49 @@ class NoteRepositoryImpl(
             edges,
             noteEntity.created_at,
             noteEntity.updated_at,
-            noteEntity.view_count.toInt()
+            noteEntity.view_count.toInt(),
+            embedding
         )
+    }
+
+    private fun toBlob(array: FloatArray): ByteArray {
+        val bytes = ByteArray(array.size * 4)
+        for (i in array.indices) {
+            val bits = array[i].toBits()
+            bytes[i * 4] = (bits shr 24).toByte()
+            bytes[i * 4 + 1] = (bits shr 16).toByte()
+            bytes[i * 4 + 2] = (bits shr 8).toByte()
+            bytes[i * 4 + 3] = (bits).toByte()
+        }
+        return bytes
+    }
+
+    private fun fromBlob(bytes: ByteArray): FloatArray {
+        val array = FloatArray(bytes.size / 4)
+        for (i in array.indices) {
+            val bits = (bytes[i * 4].toInt() and 0xFF shl 24) or
+                    (bytes[i * 4 + 1].toInt() and 0xFF shl 16) or
+                    (bytes[i * 4 + 2].toInt() and 0xFF shl 8) or
+                    (bytes[i * 4 + 3].toInt() and 0xFF)
+            array[i] = Float.fromBits(bits)
+        }
+        return array
+    }
+
+    override suspend fun getNoteById(id: String): Note? = withContext(Dispatchers.IO) {
+        queries.getNoteById(id).executeAsOneOrNull()?.let { mapToNote(it) }
+    }
+
+    override suspend fun getNoteByTitle(title: String): Note? = withContext(Dispatchers.IO) {
+        queries.getNoteByTitle(title).executeAsOneOrNull()?.let { mapToNote(it) }
+    }
+
+    override suspend fun getForwardLinks(id: String): List<Note> = withContext(Dispatchers.IO) {
+        queries.getForwardLinks(id).executeAsList().map { mapToNote(it) }
+    }
+
+    override suspend fun getBackLinks(id: String): List<Note> = withContext(Dispatchers.IO) {
+        queries.getBackLinks(id).executeAsList().map { mapToNote(it) }
     }
 
     override suspend fun saveNote(note: Note) = withContext(Dispatchers.IO) {
@@ -78,6 +104,10 @@ class NoteRepositoryImpl(
                 updated_at = note.updatedAt,
                 view_count = note.viewCount.toLong()
             )
+
+            note.embedding?.let {
+                queries.insertEmbedding(note.id, toBlob(it))
+            }
             
             queries.deleteAttributesForNote(note.id)
             note.attributes.forEach {

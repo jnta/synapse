@@ -7,6 +7,12 @@ CREATE TABLE IF NOT EXISTS Notes (
     view_count INTEGER NOT NULL DEFAULT 0
 );
 
+CREATE TABLE IF NOT EXISTS NoteEmbeddings (
+    note_id TEXT NOT NULL PRIMARY KEY,
+    embedding BLOB NOT NULL,
+    FOREIGN KEY (note_id) REFERENCES Notes(id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS Attributes (
     id TEXT NOT NULL PRIMARY KEY,
     note_id TEXT NOT NULL,
@@ -40,6 +46,19 @@ SELECT * FROM Notes WHERE id = ?;
 getAllNotes:
 SELECT * FROM Notes ORDER BY updated_at DESC;
 
+getNoteByTitle:
+SELECT * FROM Notes WHERE title = ? LIMIT 1;
+
+insertEmbedding:
+INSERT OR REPLACE INTO NoteEmbeddings(note_id, embedding)
+VALUES (?, ?);
+
+getEmbedding:
+SELECT embedding FROM NoteEmbeddings WHERE note_id = ?;
+
+deleteEmbedding:
+DELETE FROM NoteEmbeddings WHERE note_id = ?;
+
 insertAttribute:
 INSERT OR REPLACE INTO Attributes(id, note_id, attr_key, attr_value)
 VALUES (?, ?, ?, ?);
@@ -56,6 +75,16 @@ VALUES (?, ?, ?, ?);
 
 getEdgesForNote:
 SELECT * FROM Edges WHERE source_id = ? OR target_id = ?;
+
+getForwardLinks:
+SELECT n.* FROM Notes n
+JOIN Edges e ON n.id = e.target_id
+WHERE e.source_id = ?;
+
+getBackLinks:
+SELECT n.* FROM Notes n
+JOIN Edges e ON n.id = e.source_id
+WHERE e.target_id = ?;
 
 deleteEdgesForNote:
 DELETE FROM Edges WHERE source_id = ? OR target_id = ?;

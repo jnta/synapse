@@ -1,81 +1,61 @@
-Task: Implement Synapse Refined Editor & Relation Grid
-This task covers the core UI implementation of the Synapse workspace, focusing on the Atomic Writing flow, the intent-based block system, and the lateral resonance visualization.
+4. Phase 4: Explicit Graph & Vector Engine
+The Right Panel now displays the direct neighbors of your current note in the graph.
 
-1. Phase 1: Global Shell & Layout Infrastructure (DONE)
-The goal is to establish the three-column architecture before focusing on internal logic.
+[x] Graph-Link Engine (SQLDelight):
 
-[x] MainLayoutContainer: Implement a three-column scaffold using Row with independent scroll behaviors.
+[x] Implement getLinkedNotes(noteId): A query that joins Notes and Edges to find all Forward-links and Back-links.
 
-[x] LeftNav (SideBar): Fixed width. Implement NavBrand ("SYNAPSE") and PerspectiveList (Filter anchors: #Captura, #Referência, #Síntese, #Mapa).
+[x] Linked-Notes Sidebar:
 
-[x] EditorViewport (Center): Fluid width with a max-width: 800px constraint for the content area.
+[x] Forward-Links Section: Notes that the current note references via [[Link]].
 
-[x] ContextPanel (Right): Fixed width sidebar, toggleable visibility.
+[x] Back-Links Section: Notes that reference the current note.
 
-[x] NavigationState: Implement the BreadcrumbTrail at the top of the Center Viewport. It must observe the navigationStack to render the session history as clickable breadcrumbs.
+[x] Semantic Discovery (The "Inspiration" layer):
 
-2. Phase 2: State Management & Event Schema (commonMain) (DONE)
-Refactored Phase 2: State Management & Event Schema
-Moving from a rigid Enum to an Attribute-based Graph model.
+[x] Integrate ObjectBox Vector Search + ONNX Runtime. (Integrated ONNX Runtime + ResonanceRepository with local embedding generation).
 
-[x] EditorUiState Definition:
+[x] Implement a toggle or a "Discovery" tab within the sidebar to show unlinked but semantically similar notes (to help you create new links).
 
-Kotlin
-data class EditorUiState(
-    val noteId: String = "",
-    val navigationStack: List<String> = emptyList(), // Session Breadcrumbs
-    val blocks: List<NoteBlock> = emptyList(),
-    val resonanceItems: List<ResonanceItem> = emptyList(),
-    val selectionMetadata: Map<String, String> = emptyMap() // Dynamic attributes (e.g., "status" to "evergreen")
-)
-[x] Dynamic NoteBlock Model:
+[x] GraphFocusWidget: A Canvas visualization centered on the current note, drawing lines only to the explicitly linked notes in the sidebar.
 
-Kotlin
-data class NoteBlock(
-    val id: String,
-    val content: String,
-    val detectedAttributes: List<String> = emptyList() // Extracted from [C], [R], [S] or AI
-)
-[x] Event Handling: Implement EditorUiEvent for MapsTo(noteId), RequestResonance, and UpdateBlockContent.
+5. Phase 5: Metadata Persistence & Graph Interaction
+Formalizing the data and the keyboard-driven "Overflow" flow.
 
-3. Phase 3: Atomic Block Editor (The Core)
-Building the individual units of thought and their interaction logic.
+[ ] Metadata Persistence Layer (SQLDelight):
 
-[ ] LazyBlockList: Use a LazyColumn to render NoteBlock entities. Use key for performance optimization.
+[ ] Create the NoteAttributes table (as specified in your schema).
 
-[ ] EditorBlock Component:
+[ ] Implement an Attribute Parser: Detect key::value or inline tags and update the database in real-time.
 
-[ ] BlockGutter: Implement a slot for the IntentIndicator (dynamic icon based on syntax) and the drag_indicator.
+[ ] Dynamic Card UI (The Linked Cards):
 
-[ ] BlockTextField: Integrate BasicTextField with a custom VisualTransformation for real-time Markdown styling.
+[ ] Implement Meta-Pills on the cards in the Right Panel. For example, if a Back-link is marked as #Evergreen, the pill should reflect that status immediately.
 
-[ ] Focus Management: Implement FocusRequester logic so Enter creates a new block and automatically moves focus, while Backspace merges empty blocks.
+[ ] The "Note Overflow" (Transvazar) System:
 
-4. Phase 4: Resonance Panel & Contextual Widgets
-Adding the intelligence layer that reacts to the written content.
+[ ] Keyboard Shortcut: Ctrl+Enter.
 
-[ ] ResonanceCards: Implement the right-sidebar list.
+[ ] Logic: Extract Block -> Create New Note -> Link to Parent -> Inherit Metadata.
 
-[ ] Cards must show: Title -> 3-line Snippet -> Status Pills (Tags) at the base.
+[ ] Power-User Navigation:
 
-[ ] Implement EmptyResonanceState (Instructions: "Press Ctrl+I to resonate").
+[ ] Alt + Click on Card: Opens the linked note while maintaining the Breadcrumb history.
 
-[ ] GraphFocusWidget: Build a Canvas-based circular visualization in the right sidebar to indicate the "link weight" of the current note.
+[ ] Ctrl + I: Explicitly triggers the "Discover Similar" (Vector Search) to suggest new links for the sidebar.
 
-[ ] VibeIndicator: Add a subtle text-metrics indicator in the editor footer (DNA Editorial feedback).
+Updated Schema for Graph Relations
+To support the "Related Notes" panel (Links), you need a specific table for the edges:
 
-5. Phase 5: Interaction Refinement & Keyboard Shortcuts
-Polishing for the power-user/TWM experience.
+SQL
+CREATE TABLE NoteEdges (
+    id TEXT PRIMARY KEY,
+    source_id TEXT NOT NULL,
+    target_id TEXT NOT NULL,
+    label TEXT, -- e.g., 'supports', 'refutes', or NULL for general link
+    FOREIGN KEY(source_id) REFERENCES Notes(id) ON DELETE CASCADE,
+    FOREIGN KEY(target_id) REFERENCES Notes(id) ON DELETE CASCADE
+);
 
-[ ] Keyboard Shortcuts: Map Ctrl+I (Trigger Resonance), Ctrl+O (HUD Capture), and Ctrl+Enter (Note Overflow/Transbordo).
-
-[ ] Desktop UX: Implement hover states for the drag handles and smooth lateral "Slide" animations when navigating through the breadcrumb stack.
-
-[ ] Metadata Parser: Logic to automatically detect tags or attributes at the start of a block to update the UI state.
-
-Implementation Verification
-Performance: Ensure no full-list recompositions during typing.
-
-Layout: Breadcrumbs must be the primary way to navigate back (no tabs).
-
-Responsiveness: Columns must behave predictably in different window sizes without breaking the 800px editor limit.
+-- Fast lookup for Backlinks
+CREATE INDEX idx_note_edges_target ON NoteEdges(target_id);

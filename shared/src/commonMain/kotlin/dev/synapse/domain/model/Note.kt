@@ -8,7 +8,8 @@ data class Note(
     val connections: List<Edge>,
     val createdAt: Long,
     val updatedAt: Long,
-    val viewCount: Int = 0
+    val viewCount: Int = 0,
+    val embedding: FloatArray? = null
 ) {
     val snippet: String get() = if (content.length > 100) content.take(100) + "..." else content
 }

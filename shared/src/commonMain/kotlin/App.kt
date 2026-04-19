@@ -29,7 +29,8 @@ fun App() {
             SynapseDatabase(DatabaseDriverFactory().createDriver()) 
         }
         val noteRepository = remember { NoteRepositoryImpl(database) }
-        val editorViewModel = remember { EditorViewModel(coroutineScope, noteRepository) }
+        val resonanceRepository = remember { dev.synapse.di.createResonanceRepository(database) }
+        val editorViewModel = remember { EditorViewModel(coroutineScope, noteRepository, resonanceRepository) }
         
         EditorScreen(editorViewModel)
     }

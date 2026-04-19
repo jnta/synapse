@@ -28,6 +28,8 @@ kotlin {
             dependencies {
                 implementation(compose.desktop.common)
                 implementation("app.cash.sqldelight:sqlite-driver:2.0.2")
+                implementation("com.microsoft.onnxruntime:onnxruntime:1.17.1")
+                implementation("ai.djl.huggingface:tokenizers:0.28.0")
             }
         }
     }

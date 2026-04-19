@@ -14,9 +14,9 @@ import kotlin.random.Random
 import dev.synapse.domain.repository.NoteRepository
 import dev.synapse.domain.model.Note
 import dev.synapse.domain.util.NoteParser
-import dev.synapse.domain.model.Attribute
-import dev.synapse.domain.model.Edge
+import dev.synapse.domain.repository.ResonanceRepository
 import kotlinx.coroutines.flow.collect
+import kotlinx.datetime.Clock
 
 private const val DEBOUNCE_MS = 300L
 private const val AUTO_SAVE_DEBOUNCE_MS = 2000L
@@ -25,7 +25,8 @@ private const val MAX_TITLE_LENGTH = 50
 @OptIn(FlowPreview::class)
 class EditorViewModel(
     private val coroutineScope: CoroutineScope,
-    private val repository: NoteRepository
+    private val repository: NoteRepository,
+    private val resonanceRepository: ResonanceRepository
 ) {
 
 
@@ -84,21 +85,11 @@ class EditorViewModel(
             is EditorUiEvent.SelectNote -> { selectNote(event.noteId); true }
             is EditorUiEvent.MapsTo -> { selectNote(event.noteId); true }
             is EditorUiEvent.RequestResonance -> { 
-                val mockResonance = listOf(
-                    ResonanceItem(
-                        EditorLogic.generateId(), 
-                        "Related Concept", 
-                        "Snippet of a related thought...", 
-                        listOf("Theory")
-                    ),
-                    ResonanceItem(
-                        EditorLogic.generateId(), 
-                        "Contradictory Note", 
-                        "This contradicts the current hypothesis...", 
-                        listOf("Fact", "Critical")
-                    )
-                )
-                _state.update { it.copy(resonanceItems = mockResonance) }
+                coroutineScope.launch {
+                    val currentContent = _state.value.blocks.joinToString("\n\n") { it.content }
+                    val resonance = resonanceRepository.getResonance(currentContent)
+                    _state.update { it.copy(resonanceItems = resonance) }
+                }
                 true 
             }
             is EditorUiEvent.CreateNewNote -> { launchCreateNote(); true }
@@ -135,16 +126,35 @@ class EditorViewModel(
 
         coroutineScope.launch {
             val existingNote = repository.getNoteById(selectedId)
+            val extractedEdges = NoteParser.extractEdges(selectedId, fullContent)
+            
+            // Resolve Titles to IDs
+            val resolvedEdges = extractedEdges.map { edge ->
+                val targetNote = repository.getNoteByTitle(edge.targetId)
+                if (targetNote != null) {
+                    edge.copy(targetId = targetNote.id)
+                } else {
+                    edge // Keep title if not found, or maybe filter out? 
+                    // Usually in these systems we keep it as a "broken link" or title reference
+                }
+            }
+
             val updatedNote = Note(
                 id = selectedId,
                 title = derivedTitle,
                 content = fullContent,
                 attributes = NoteParser.extractAttributes(fullContent),
-                connections = NoteParser.extractEdges(selectedId, fullContent),
-                createdAt = existingNote?.createdAt ?: System.currentTimeMillis(),
-                updatedAt = System.currentTimeMillis()
+                connections = resolvedEdges,
+                createdAt = existingNote?.createdAt ?: Clock.System.now().toEpochMilliseconds(),
+                updatedAt = Clock.System.now().toEpochMilliseconds(),
+                embedding = existingNote?.embedding // Keep existing for now, separate job updates it
             )
             repository.saveNote(updatedNote)
+            
+            // Trigger embedding update in background
+            coroutineScope.launch {
+                resonanceRepository.updateEmbedding(selectedId, fullContent)
+            }
             
             if (!isAutoSave) {
                 _state.update { it.copy(originalThought = "", showResonanceFilter = false) }
@@ -157,6 +167,8 @@ class EditorViewModel(
     private fun selectNote(noteId: String) {
         coroutineScope.launch {
             val note = repository.getNoteById(noteId) ?: return@launch
+            val forwardLinks = repository.getForwardLinks(noteId)
+            val backLinks = repository.getBackLinks(noteId)
             
             val initialBlocks = note.content.split("\n\n").map { 
                 NoteBlock(
@@ -173,6 +185,8 @@ class EditorViewModel(
                     noteId = noteId,
                     navigationStack = EditorLogic.updateNavigationStack(state.navigationStack, noteId),
                     blocks = blocks,
+                    forwardLinks = forwardLinks,
+                    backLinks = backLinks,
                     focusedBlockId = blocks.firstOrNull()?.id
                 )
             }
