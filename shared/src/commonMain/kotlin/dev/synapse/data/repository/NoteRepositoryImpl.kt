@@ -114,7 +114,7 @@ class NoteRepositoryImpl(
                 queries.insertAttribute(it.id, note.id, it.key, it.value)
             }
             
-            queries.deleteEdgesForNote(note.id, note.id)
+            queries.deleteOutgoingEdges(note.id)
             note.connections.forEach {
                 queries.insertEdge(it.id, it.sourceId, it.targetId, it.label)
             }

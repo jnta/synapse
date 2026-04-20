@@ -1,4 +1,6 @@
 package editor
+ 
+import dev.synapse.domain.model.Note
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -127,17 +129,77 @@ fun handleKeyEvent(
 fun SlashCommandMenu(
     expanded: Boolean,
     onDismiss: () -> Unit,
-    onSelect: (String) -> Unit
+    onSelect: (String) -> Unit,
+    notes: List<Note> = emptyList(),
+    currentNoteId: String = "",
+    query: String = "",
+    onLinkSelect: (Note) -> Unit = {}
 ) {
     DropdownMenu(
         expanded = expanded,
-        onDismissRequest = onDismiss
+        onDismissRequest = onDismiss,
+        properties = androidx.compose.ui.window.PopupProperties(focusable = false)
     ) {
+        SlashMenuContent(
+            notes = notes,
+            currentNoteId = currentNoteId,
+            query = query,
+            onSelect = onSelect,
+            onLinkSelect = onLinkSelect,
+            onDismiss = onDismiss
+        )
+    }
+}
+
+@Composable
+private fun SlashMenuContent(
+    notes: List<Note>,
+    currentNoteId: String,
+    query: String,
+    onSelect: (String) -> Unit,
+    onLinkSelect: (Note) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val filteredNotes = notes.filter { 
+        it.id != currentNoteId && (query.isEmpty() || it.title.contains(query, ignoreCase = true)) 
+    }.take(10)
+
+    if (query.isEmpty()) {
         DropdownMenuItem(onClick = { onSelect("# ") }) {
             Text("Heading 1")
         }
         DropdownMenuItem(onClick = { onSelect("## ") }) {
             Text("Heading 2")
+        }
+        Divider(color = Color.Gray.copy(alpha = 0.2f))
+    }
+
+    if (filteredNotes.isNotEmpty()) {
+        Text(
+            "Link to Note", 
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+            style = MaterialTheme.typography.overline,
+            color = Color.Gray
+        )
+    }
+
+    for (note in filteredNotes) {
+        DropdownMenuItem(onClick = { 
+            onLinkSelect(note)
+            onDismiss()
+        }) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(8.dp)
+                        .background(MaterialTheme.colors.primary, shape = androidx.compose.foundation.shape.CircleShape)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Column {
+                    Text(note.title, style = MaterialTheme.typography.body2)
+                    Text(note.id.take(8), style = MaterialTheme.typography.overline, color = Color.Gray)
+                }
+            }
         }
     }
 }

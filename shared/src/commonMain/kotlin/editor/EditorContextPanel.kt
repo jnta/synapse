@@ -156,6 +156,31 @@ fun LinkCard(note: Note, onEvent: (EditorUiEvent) -> Unit) {
                 style = MaterialTheme.typography.subtitle2,
                 color = Color.White
             )
+            
+            // Meta-Pills
+            if (note.attributes.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    note.attributes.take(3).forEach { attr ->
+                        val pillText = if (attr.key == "tag") "#${attr.value}" else "${attr.key}:${attr.value}"
+                        Text(
+                            text = pillText,
+                            style = MaterialTheme.typography.overline,
+                            color = if (attr.key == "status" && attr.value == "Evergreen") Color(0xFF4CAF50) else SynapseColors.Primary,
+                            modifier = Modifier
+                                .background(
+                                    (if (attr.key == "status" && attr.value == "Evergreen") Color(0xFF4CAF50) else SynapseColors.Primary).copy(alpha = 0.1f),
+                                    shape = androidx.compose.foundation.shape.RoundedCornerShape(4.dp)
+                                )
+                                .padding(horizontal = 4.dp, vertical = 2.dp)
+                        )
+                    }
+                }
+            }
         }
     }
 }

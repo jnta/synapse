@@ -84,13 +84,17 @@ class EditorViewModel(
         return when (event) {
             is EditorUiEvent.SelectNote -> { selectNote(event.noteId); true }
             is EditorUiEvent.MapsTo -> { selectNote(event.noteId); true }
-            is EditorUiEvent.RequestResonance -> { 
+            is EditorUiEvent.Resonate -> {
                 coroutineScope.launch {
                     val currentContent = _state.value.blocks.joinToString("\n\n") { it.content }
                     val resonance = resonanceRepository.getResonance(currentContent)
                     _state.update { it.copy(resonanceItems = resonance) }
                 }
-                true 
+                true
+            }
+            is EditorUiEvent.NoteOverflow -> {
+                handleNoteOverflow(event.blockId)
+                true
             }
             is EditorUiEvent.CreateNewNote -> { launchCreateNote(); true }
             is EditorUiEvent.SaveCurrentNote -> { handleSave(isCommit = false); true }
@@ -104,7 +108,70 @@ class EditorViewModel(
             is EditorUiEvent.ToggleContextPanel -> { 
                 _state.update { it.copy(isContextPanelVisible = !it.isContextPanelVisible) }; true 
             }
+            is EditorUiEvent.LinkNotes -> {
+                coroutineScope.launch {
+                    val edge = dev.synapse.domain.model.Edge(
+                        id = EditorLogic.generateId(),
+                        sourceId = event.sourceNoteId,
+                        targetId = event.targetNoteId,
+                        label = "manual_link"
+                    )
+                    repository.saveNote(
+                        repository.getNoteById(event.sourceNoteId)?.let { note ->
+                            note.copy(connections = note.connections + edge)
+                        } ?: return@launch
+                    )
+                }
+                true
+            }
             else -> false
+        }
+    }
+
+    private fun handleNoteOverflow(blockId: String) {
+        val currentState = _state.value
+        val parentNoteId = currentState.noteId
+        val block = currentState.blocks.find { it.id == blockId } ?: return
+        val content = block.content
+        if (content.isBlank()) return
+
+        coroutineScope.launch {
+            val parentNote = repository.getNoteById(parentNoteId)
+            val inheritedAttributes = parentNote?.attributes?.map { 
+                it.copy(id = EditorLogic.generateId()) 
+            } ?: emptyList()
+
+            val newId = EditorLogic.generateId()
+            val derivedTitle = content.lineSequence().firstOrNull()?.removePrefix("# ")?.take(MAX_TITLE_LENGTH) ?: "Untitled"
+            
+            val newNote = Note(
+                id = newId,
+                title = derivedTitle,
+                content = content,
+                attributes = inheritedAttributes + NoteParser.extractAttributes(content),
+                connections = listOf(
+                    dev.synapse.domain.model.Edge(
+                        id = EditorLogic.generateId(),
+                        sourceId = newId,
+                        targetId = parentNoteId,
+                        label = "overflow_from"
+                    )
+                ),
+                createdAt = Clock.System.now().toEpochMilliseconds(),
+                updatedAt = Clock.System.now().toEpochMilliseconds()
+            )
+            repository.saveNote(newNote)
+
+            val updatedBlocks = currentState.blocks.filter { it.id != blockId }
+            val newParentContent = updatedBlocks.joinToString("\n\n") { it.content }
+            if (parentNote != null) {
+                repository.saveNote(parentNote.copy(
+                    content = newParentContent,
+                    updatedAt = Clock.System.now().toEpochMilliseconds()
+                ))
+            }
+
+            selectNote(newId)
         }
     }
 

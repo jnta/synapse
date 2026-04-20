@@ -1,6 +1,11 @@
 package editor
 
 import dev.synapse.domain.model.Note
+import kotlinx.datetime.*
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.DateRange
 
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.draw.drawBehind
@@ -52,7 +57,13 @@ fun EditorScreen(viewModel: EditorViewModel) {
                             true
                         }
                         Key.I -> {
-                            viewModel.onEvent(EditorUiEvent.ToggleContextPanel)
+                            viewModel.onEvent(EditorUiEvent.Resonate)
+                            true
+                        }
+                        Key.Enter -> {
+                            state.focusedBlockId?.let { 
+                                viewModel.onEvent(EditorUiEvent.NoteOverflow(it))
+                            }
                             true
                         }
                         else -> false
@@ -106,12 +117,24 @@ fun EditorScreen(viewModel: EditorViewModel) {
                         } else if (state.noteId.isEmpty()) {
                             EmptyEditorState(onEvent = viewModel::onEvent)
                         } else {
+                            val currentNote = state.notes.find { it.id == state.noteId }
+                            
+                            if (currentNote != null) {
+                                NoteHeader(
+                                    note = currentNote,
+                                    forwardLinks = state.forwardLinks,
+                                    backLinks = state.backLinks,
+                                    onNoteClick = { id -> viewModel.onEvent(EditorUiEvent.SelectNote(id)) }
+                                )
+                                Spacer(modifier = Modifier.height(24.dp))
+                            }
+
                             BlockEditorArea(
                                 blocks = state.blocks,
                                 focusedBlockId = state.focusedBlockId,
-                                shouldMask = (state.notes.find { 
-                                    it.id == state.noteId 
-                                }?.viewCount ?: 0) >= 2,
+                                shouldMask = (currentNote?.viewCount ?: 0) >= 2,
+                                notes = state.notes,
+                                currentNoteId = state.noteId,
                                 onEvent = viewModel::onEvent,
                                 modifier = Modifier.weight(1f).fillMaxWidth()
                             )
@@ -390,6 +413,8 @@ fun BlockEditorArea(
     blocks: List<NoteBlock>,
     focusedBlockId: String?,
     shouldMask: Boolean,
+    notes: List<Note>,
+    currentNoteId: String,
     onEvent: (EditorUiEvent) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -411,6 +436,8 @@ fun BlockEditorArea(
                     block = block,
                     isFocused = focusedBlockId == block.id,
                     shouldMask = shouldMask,
+                    notes = notes,
+                    currentNoteId = currentNoteId,
                     focusRequester = focusRequester,
                     onEvent = onEvent
                 )
@@ -426,6 +453,8 @@ fun BlockItem(
     block: NoteBlock,
     isFocused: Boolean,
     shouldMask: Boolean,
+    notes: List<Note>,
+    currentNoteId: String,
     focusRequester: FocusRequester,
     onEvent: (EditorUiEvent) -> Unit
 ) {
@@ -463,9 +492,23 @@ fun BlockItem(
         )
 
         Box(modifier = Modifier.weight(1f).padding(vertical = 4.dp)) {
+            var slashQuery by remember { mutableStateOf("") }
+            
             LaunchedEffect(textValue.text) {
                 onEvent(EditorUiEvent.UpdateBlockContent(block.id, textValue.text))
-                showSlashMenu = textValue.text.endsWith("/")
+                
+                val slashIndex = textValue.text.lastIndexOf('/')
+                if (slashIndex != -1) {
+                    val afterSlash = textValue.text.substring(slashIndex + 1)
+                    if (!afterSlash.contains(' ')) {
+                        slashQuery = afterSlash
+                        showSlashMenu = true
+                    } else {
+                        showSlashMenu = false
+                    }
+                } else {
+                    showSlashMenu = false
+                }
             }
             
             BlockTextField(
@@ -484,6 +527,14 @@ fun BlockItem(
                 onSelect = { prefix ->
                     onEvent(EditorUiEvent.UpdateBlockContent(block.id, prefix))
                     showSlashMenu = false
+                },
+                notes = notes,
+                currentNoteId = currentNoteId,
+                query = slashQuery,
+                onLinkSelect = { targetNote ->
+                    val contentBeforeSlash = block.content.substringBeforeLast("/")
+                    onEvent(EditorUiEvent.UpdateBlockContent(block.id, contentBeforeSlash + "[[" + targetNote.title + "]]"))
+                    showSlashMenu = false
                 }
             )
         }
@@ -491,3 +542,102 @@ fun BlockItem(
 }
 
 
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun NoteHeader(
+    note: Note,
+    forwardLinks: List<Note>,
+    backLinks: List<Note>,
+    onNoteClick: (String) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 16.dp)
+            .background(Color.White.copy(alpha = 0.03f), shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp))
+            .padding(20.dp)
+    ) {
+        // Title
+        Text(
+            text = note.title.uppercase(),
+            style = MaterialTheme.typography.h4.copy(
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 2.sp
+            ),
+            color = MaterialTheme.colors.onBackground
+        )
+        
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // Metadata Row
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Icon(
+                imageVector = Icons.Default.DateRange,
+                contentDescription = "Created",
+                tint = Color.Gray,
+                modifier = Modifier.size(16.dp)
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(
+                text = formatTimestamp(note.createdAt),
+                style = MaterialTheme.typography.caption,
+                color = Color.Gray
+            )
+            
+            Spacer(modifier = Modifier.width(16.dp))
+            
+            // Tags
+            note.attributes.filter { it.key == "tag" }.forEach { tag ->
+                Box(
+                    modifier = Modifier
+                        .padding(end = 6.dp)
+                        .background(MaterialTheme.colors.primary.copy(alpha = 0.1f), shape = androidx.compose.foundation.shape.CircleShape)
+                        .padding(horizontal = 8.dp, vertical = 2.dp)
+                ) {
+                    Text(
+                        text = "#${tag.value}",
+                        style = MaterialTheme.typography.overline,
+                        color = MaterialTheme.colors.primary
+                    )
+                }
+            }
+        }
+
+        val allLinks = (forwardLinks + backLinks).distinctBy { it.id }
+        if (allLinks.isNotEmpty()) {
+            Divider(modifier = Modifier.padding(vertical = 16.dp), color = Color.Gray.copy(alpha = 0.1f))
+            
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Text("NETWORKED CONTEXT", style = MaterialTheme.typography.overline, color = Color.Gray)
+                Spacer(modifier = Modifier.height(8.dp))
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    allLinks.forEach { link ->
+                        Text(
+                            text = link.title,
+                            style = MaterialTheme.typography.body2,
+                            color = MaterialTheme.colors.primary,
+                            modifier = Modifier
+                                .background(MaterialTheme.colors.primary.copy(alpha = 0.05f), shape = androidx.compose.foundation.shape.RoundedCornerShape(4.dp))
+                                .clickable { onNoteClick(link.id) }
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun formatTimestamp(timestamp: Long): String {
+    val instant = Instant.fromEpochMilliseconds(timestamp)
+    val dateTime = instant.toLocalDateTime(TimeZone.currentSystemDefault())
+    val month = dateTime.month.name.take(3).lowercase().replaceFirstChar { it.uppercase() }
+    return "$month ${dateTime.dayOfMonth}, ${dateTime.year}"
+}

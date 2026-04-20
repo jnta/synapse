@@ -86,5 +86,8 @@ SELECT n.* FROM Notes n
 JOIN Edges e ON n.id = e.source_id
 WHERE e.target_id = ?;
 
+deleteOutgoingEdges:
+DELETE FROM Edges WHERE source_id = ?;
+
 deleteEdgesForNote:
 DELETE FROM Edges WHERE source_id = ? OR target_id = ?;
