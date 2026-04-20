@@ -19,6 +19,7 @@ import dev.synapse.domain.model.NoteMetadata
 import dev.synapse.domain.util.NoteParser
 import dev.synapse.domain.repository.ResonanceRepository
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.combine
 import kotlinx.datetime.Clock
 
 private const val DEBOUNCE_MS = 300L
@@ -44,14 +45,26 @@ class EditorViewModel(
         onEvent(EditorUiEvent.LoadNotes)
         
         coroutineScope.launch {
-            repository.getNoteSummaries().collect { summaries ->
-                _state.update { it.copy(noteSummaries = summaries, isLoading = false) }
+            combine(
+                repository.getNoteSummaries(),
+                _state.map { it.selectedCategories }.distinctUntilChanged()
+            ) { summaries, categories ->
+                if (categories.isEmpty()) summaries
+                else summaries.filter { it.category in categories }
+            }.collect { filteredSummaries ->
+                _state.update { it.copy(noteSummaries = filteredSummaries, isLoading = false) }
             }
         }
 
         coroutineScope.launch {
-            repository.getAllNotes().collect { notes ->
-                _state.update { it.copy(notes = notes) }
+            combine(
+                repository.getAllNotes(),
+                _state.map { it.selectedCategories }.distinctUntilChanged()
+            ) { notes, categories ->
+                if (categories.isEmpty()) notes
+                else notes.filter { it.category in categories }
+            }.collect { filteredNotes ->
+                _state.update { it.copy(notes = filteredNotes) }
             }
         }
 
@@ -132,7 +145,8 @@ class EditorViewModel(
                 _state.update { it.copy(originalThought = event.text) }; true 
             }
             is EditorUiEvent.ToggleSidebar,
-            is EditorUiEvent.ToggleContextPanel -> handleToggleEvents(event)
+            is EditorUiEvent.ToggleContextPanel,
+            is EditorUiEvent.ToggleCategoryFilter -> handleToggleEvents(event)
             is EditorUiEvent.LinkNotes -> { operations.linkNotes(event); true }
             is EditorUiEvent.NavigateTo -> {
                 _state.update { it.copy(currentDestination = event.destination) }
@@ -170,6 +184,16 @@ class EditorViewModel(
                 _state.update { it.copy(isSidebarVisible = !it.isSidebarVisible) }
             is EditorUiEvent.ToggleContextPanel -> 
                 _state.update { it.copy(isContextPanelVisible = !it.isContextPanelVisible) }
+            is EditorUiEvent.ToggleCategoryFilter -> {
+                _state.update { state ->
+                    val newSelected = if (state.selectedCategories.contains(event.category)) {
+                        state.selectedCategories - event.category
+                    } else {
+                        state.selectedCategories + event.category
+                    }
+                    state.copy(selectedCategories = newSelected)
+                }
+            }
             else -> return false
         }
         return true

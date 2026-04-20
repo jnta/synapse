@@ -233,7 +233,10 @@ fun LeftNav(
             modifier = Modifier.padding(start = 12.dp, bottom = 8.dp)
         )
 
-        CollectionList()
+        CollectionList(
+            selectedCategories = state.selectedCategories,
+            onEvent = onEvent
+        )
 
         Spacer(modifier = Modifier.weight(1f))
 

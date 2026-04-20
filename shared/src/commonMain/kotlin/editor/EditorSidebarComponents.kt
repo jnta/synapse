@@ -72,23 +72,50 @@ private fun NavigationItem(
 }
 
 @Composable
-fun CollectionList() {
+fun CollectionList(
+    selectedCategories: Set<dev.synapse.domain.model.NoteCategory>,
+    onEvent: (EditorUiEvent) -> Unit
+) {
     Column(
         modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        CollectionItem("Evergreen", dev.synapse.domain.model.NoteCategory.EVERGREEN)
-        CollectionItem("Raw", dev.synapse.domain.model.NoteCategory.RAW)
-        CollectionItem("Lit", dev.synapse.domain.model.NoteCategory.LIT)
+        CollectionItem(
+            label = "Evergreen", 
+            category = dev.synapse.domain.model.NoteCategory.EVERGREEN,
+            isSelected = selectedCategories.contains(dev.synapse.domain.model.NoteCategory.EVERGREEN),
+            onClick = { onEvent(EditorUiEvent.ToggleCategoryFilter(dev.synapse.domain.model.NoteCategory.EVERGREEN)) }
+        )
+        CollectionItem(
+            label = "Raw", 
+            category = dev.synapse.domain.model.NoteCategory.RAW,
+            isSelected = selectedCategories.contains(dev.synapse.domain.model.NoteCategory.RAW),
+            onClick = { onEvent(EditorUiEvent.ToggleCategoryFilter(dev.synapse.domain.model.NoteCategory.RAW)) }
+        )
+        CollectionItem(
+            label = "Lit", 
+            category = dev.synapse.domain.model.NoteCategory.LIT,
+            isSelected = selectedCategories.contains(dev.synapse.domain.model.NoteCategory.LIT),
+            onClick = { onEvent(EditorUiEvent.ToggleCategoryFilter(dev.synapse.domain.model.NoteCategory.LIT)) }
+        )
     }
 }
 
 @Composable
-private fun CollectionItem(label: String, category: dev.synapse.domain.model.NoteCategory) {
+private fun CollectionItem(
+    label: String, 
+    category: dev.synapse.domain.model.NoteCategory,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { }
+            .background(
+                if (isSelected) SynapseColors.SurfaceContainer else Color.Transparent,
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(4.dp)
+            )
+            .clickable(onClick = onClick)
             .padding(vertical = 6.dp, horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -98,8 +125,8 @@ private fun CollectionItem(label: String, category: dev.synapse.domain.model.Not
             text = label,
             style = TextStyle(
                 fontSize = 13.sp,
-                fontWeight = FontWeight.Medium,
-                color = SynapseColors.OnSurfaceVariant.copy(alpha = 0.7f)
+                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
+                color = if (isSelected) SynapseColors.Primary else SynapseColors.OnSurfaceVariant.copy(alpha = 0.7f)
             )
         )
     }

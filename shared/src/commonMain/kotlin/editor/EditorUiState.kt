@@ -43,6 +43,7 @@ data class EditorUiState(
     val showResonanceFilter: Boolean = false,
     val originalThought: String = "",
     val currentDestination: String = "All Notes",
+    val selectedCategories: Set<dev.synapse.domain.model.NoteCategory> = emptySet(),
     val minThoughtLength: Int = 50
 )
 
@@ -76,4 +77,5 @@ sealed interface EditorUiEvent {
     data class LinkNotes(val sourceNoteId: String, val targetNoteId: String) : EditorUiEvent
     data class DeleteNote(val noteId: String) : EditorUiEvent
     data class UpdateNoteCategory(val category: dev.synapse.domain.model.NoteCategory) : EditorUiEvent
+    data class ToggleCategoryFilter(val category: dev.synapse.domain.model.NoteCategory) : EditorUiEvent
 }
