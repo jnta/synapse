@@ -11,6 +11,6 @@ interface NoteRepository {
     suspend fun getNoteByTitle(title: String): Note?
     suspend fun saveNote(note: Note)
     suspend fun deleteNote(id: String)
-    suspend fun getForwardLinks(id: String): List<Note>
-    suspend fun getBackLinks(id: String): List<Note>
+    fun getForwardLinks(id: String): Flow<List<Note>>
+    fun getBackLinks(id: String): Flow<List<Note>>
 }

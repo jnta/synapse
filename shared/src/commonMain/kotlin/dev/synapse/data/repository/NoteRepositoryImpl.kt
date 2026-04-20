@@ -100,12 +100,18 @@ class NoteRepositoryImpl(
         queries.getNoteByTitle(title).executeAsOneOrNull()?.let { mapToNote(it) }
     }
 
-    override suspend fun getForwardLinks(id: String): List<Note> = withContext(Dispatchers.IO) {
-        queries.getForwardLinks(id).executeAsList().map { mapToNote(it) }
+    override fun getForwardLinks(id: String): Flow<List<Note>> {
+        return queries.getForwardLinks(id)
+            .asFlow()
+            .mapToList(Dispatchers.IO)
+            .map { notes -> notes.map { mapToNote(it) } }
     }
 
-    override suspend fun getBackLinks(id: String): List<Note> = withContext(Dispatchers.IO) {
-        queries.getBackLinks(id).executeAsList().map { mapToNote(it) }
+    override fun getBackLinks(id: String): Flow<List<Note>> {
+        return queries.getBackLinks(id)
+            .asFlow()
+            .mapToList(Dispatchers.IO)
+            .map { notes -> notes.map { mapToNote(it) } }
     }
 
     override suspend fun saveNote(note: Note) = withContext(Dispatchers.IO) {

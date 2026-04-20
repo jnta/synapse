@@ -8,6 +8,8 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.FlowPreview
 import kotlin.random.Random
@@ -66,6 +68,25 @@ class EditorViewModel(
                 .collectLatest { 
                     handleSave(isCommit = false, isAutoSave = true) 
                 }
+        }
+
+        coroutineScope.launch {
+            _state.map { it.noteId }.distinctUntilChanged().collectLatest { noteId ->
+                if (noteId.isNotEmpty()) {
+                    launch {
+                        repository.getForwardLinks(noteId).collect { links ->
+                            _state.update { it.copy(forwardLinks = links) }
+                        }
+                    }
+                    launch {
+                        repository.getBackLinks(noteId).collect { links ->
+                            _state.update { it.copy(backLinks = links) }
+                        }
+                    }
+                } else {
+                    _state.update { it.copy(forwardLinks = emptyList(), backLinks = emptyList()) }
+                }
+            }
         }
     }
 
@@ -284,8 +305,6 @@ class EditorViewModel(
     private fun selectNote(noteId: String) {
         coroutineScope.launch {
             val note = repository.getNoteById(noteId) ?: return@launch
-            val forwardLinks = repository.getForwardLinks(noteId)
-            val backLinks = repository.getBackLinks(noteId)
             
             val initialBlocks = note.content.split("\n\n").map { 
                 NoteBlock(
@@ -303,8 +322,6 @@ class EditorViewModel(
                     currentDestination = "Editor",
                     navigationStack = EditorLogic.updateNavigationStack(state.navigationStack, noteId),
                     blocks = blocks,
-                    forwardLinks = forwardLinks,
-                    backLinks = backLinks,
                     focusedBlockId = blocks.firstOrNull()?.id
                 )
             }
