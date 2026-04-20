@@ -16,3 +16,5 @@ shared/shared.podspec
 
 .kotlin/
 .vscode/
+# Added by code-review-graph
+.code-review-graph/
