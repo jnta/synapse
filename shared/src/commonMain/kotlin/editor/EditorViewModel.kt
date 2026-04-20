@@ -41,8 +41,14 @@ class EditorViewModel(
         onEvent(EditorUiEvent.LoadNotes)
         
         coroutineScope.launch {
+            repository.getNoteSummaries().collect { summaries ->
+                _state.update { it.copy(noteSummaries = summaries, isLoading = false) }
+            }
+        }
+
+        coroutineScope.launch {
             repository.getAllNotes().collect { notes ->
-                _state.update { it.copy(notes = notes, isLoading = false) }
+                _state.update { it.copy(notes = notes) }
             }
         }
 
@@ -65,18 +71,22 @@ class EditorViewModel(
 
     fun onEvent(event: EditorUiEvent) {
         if (!handleNoteEvent(event)) {
-            handleBlockEvent(event)
-        }
-    }
-
-    private fun handleBlockEvent(event: EditorUiEvent) {
-        when (event) {
-            is EditorUiEvent.UpdateBlockContent -> updateBlockContent(event.blockId, event.newContent)
-            is EditorUiEvent.AddBlockAfter -> mutateBlocks(BlockAction.Add(event.blockId))
-            is EditorUiEvent.RemoveBlock -> mutateBlocks(BlockAction.Remove(event.blockId))
-            is EditorUiEvent.MoveBlock -> mutateBlocks(BlockAction.Move(event.fromIndex, event.toIndex))
-            is EditorUiEvent.FocusBlock -> _state.update { state -> state.copy(focusedBlockId = event.blockId) }
-            else -> {}
+            when (event) {
+                is EditorUiEvent.UpdateBlockContent -> updateBlockContent(event.blockId, event.newContent)
+                is EditorUiEvent.AddBlockAfter -> _state.update { 
+                    EditorLogic.mutateBlocks(it, BlockAction.Add(event.blockId)) 
+                }
+                is EditorUiEvent.RemoveBlock -> _state.update { 
+                    EditorLogic.mutateBlocks(it, BlockAction.Remove(event.blockId)) 
+                }
+                is EditorUiEvent.MoveBlock -> _state.update { 
+                    EditorLogic.mutateBlocks(it, BlockAction.Move(event.fromIndex, event.toIndex)) 
+                }
+                is EditorUiEvent.FocusBlock -> _state.update { 
+                    it.copy(focusedBlockId = event.blockId) 
+                }
+                else -> {}
+            }
         }
     }
 
@@ -84,19 +94,36 @@ class EditorViewModel(
         return when (event) {
             is EditorUiEvent.SelectNote -> { selectNote(event.noteId); true }
             is EditorUiEvent.MapsTo -> { selectNote(event.noteId); true }
-            is EditorUiEvent.Resonate -> {
+            is EditorUiEvent.Resonate -> { resonate(); true }
+            is EditorUiEvent.NoteOverflow -> { handleNoteOverflow(event.blockId); true }
+            is EditorUiEvent.CreateNewNote -> {
                 coroutineScope.launch {
-                    val currentContent = _state.value.blocks.joinToString("\n\n") { it.content }
-                    val resonance = resonanceRepository.getResonance(currentContent)
-                    _state.update { it.copy(resonanceItems = resonance) }
+                    val newId = EditorLogic.generateId()
+                    val initialBlock = EditorLogic.createInitialBlock()
+                    val newNote = Note(
+                        id = newId,
+                        title = "Untitled",
+                        content = "",
+                        attributes = emptyList(),
+                        connections = emptyList(),
+                        createdAt = Clock.System.now().toEpochMilliseconds(),
+                        updatedAt = Clock.System.now().toEpochMilliseconds()
+                    )
+                    repository.saveNote(newNote)
+                    _state.update { 
+                        it.copy(
+                            noteId = newId,
+                            currentDestination = "Editor",
+                            navigationStack = EditorLogic.updateNavigationStack(it.navigationStack, newId),
+                            blocks = listOf(initialBlock),
+                            focusedBlockId = initialBlock.id,
+                            showResonanceFilter = false,
+                            originalThought = ""
+                        ) 
+                    }
                 }
-                true
+                true 
             }
-            is EditorUiEvent.NoteOverflow -> {
-                handleNoteOverflow(event.blockId)
-                true
-            }
-            is EditorUiEvent.CreateNewNote -> { launchCreateNote(); true }
             is EditorUiEvent.SaveCurrentNote -> { handleSave(isCommit = false); true }
             is EditorUiEvent.CommitNote -> { handleSave(isCommit = true); true }
             is EditorUiEvent.UpdateOriginalThought -> { 
@@ -108,23 +135,34 @@ class EditorViewModel(
             is EditorUiEvent.ToggleContextPanel -> { 
                 _state.update { it.copy(isContextPanelVisible = !it.isContextPanelVisible) }; true 
             }
-            is EditorUiEvent.LinkNotes -> {
-                coroutineScope.launch {
-                    val edge = dev.synapse.domain.model.Edge(
-                        id = EditorLogic.generateId(),
-                        sourceId = event.sourceNoteId,
-                        targetId = event.targetNoteId,
-                        label = "manual_link"
-                    )
-                    repository.saveNote(
-                        repository.getNoteById(event.sourceNoteId)?.let { note ->
-                            note.copy(connections = note.connections + edge)
-                        } ?: return@launch
-                    )
-                }
+            is EditorUiEvent.LinkNotes -> { linkNotes(event); true }
+            is EditorUiEvent.NavigateTo -> {
+                _state.update { it.copy(currentDestination = event.destination) }
                 true
             }
             else -> false
+        }
+    }
+
+    private fun resonate() {
+        coroutineScope.launch {
+            val currentContent = _state.value.blocks.joinToString("\n\n") { it.content }
+            val resonance = resonanceRepository.getResonance(currentContent)
+            _state.update { it.copy(resonanceItems = resonance) }
+        }
+    }
+
+    private fun linkNotes(event: EditorUiEvent.LinkNotes) {
+        coroutineScope.launch {
+            val edge = dev.synapse.domain.model.Edge(
+                id = EditorLogic.generateId(),
+                sourceId = event.sourceNoteId,
+                targetId = event.targetNoteId,
+                label = "manual_link"
+            )
+            repository.getNoteById(event.sourceNoteId)?.let { note ->
+                repository.saveNote(note.copy(connections = note.connections + edge))
+            }
         }
     }
 
@@ -142,7 +180,8 @@ class EditorViewModel(
             } ?: emptyList()
 
             val newId = EditorLogic.generateId()
-            val derivedTitle = content.lineSequence().firstOrNull()?.removePrefix("# ")?.take(MAX_TITLE_LENGTH) ?: "Untitled"
+            val derivedTitle = content.lineSequence()
+                .firstOrNull()?.removePrefix("# ")?.take(MAX_TITLE_LENGTH) ?: "Untitled"
             
             val newNote = Note(
                 id = newId,
@@ -250,6 +289,7 @@ class EditorViewModel(
             _state.update { state ->
                 state.copy(
                     noteId = noteId,
+                    currentDestination = "Editor",
                     navigationStack = EditorLogic.updateNavigationStack(state.navigationStack, noteId),
                     blocks = blocks,
                     forwardLinks = forwardLinks,
@@ -299,38 +339,5 @@ class EditorViewModel(
         }
     }
 
-    private fun mutateBlocks(action: BlockAction) {
-        _state.update { state ->
-            EditorLogic.mutateBlocks(state, action)
-        }
-    }
-
-    private fun launchCreateNote() {
-        coroutineScope.launch {
-            val newId = EditorLogic.generateId()
-            val initialBlock = EditorLogic.createInitialBlock()
-            val newNote = Note(
-                id = newId,
-                title = "Untitled",
-                content = "",
-                attributes = emptyList(),
-                connections = emptyList(),
-                createdAt = System.currentTimeMillis(),
-                updatedAt = System.currentTimeMillis()
-            )
-            repository.saveNote(newNote)
-            
-            _state.update { 
-                it.copy(
-                    noteId = newId,
-                    navigationStack = EditorLogic.updateNavigationStack(it.navigationStack, newId),
-                    blocks = listOf(initialBlock),
-                    focusedBlockId = initialBlock.id,
-                    showResonanceFilter = false,
-                    originalThought = ""
-                ) 
-            }
-        }
-    }
 
 }

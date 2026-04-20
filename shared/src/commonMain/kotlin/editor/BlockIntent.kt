@@ -1,6 +1,6 @@
 package editor
  
-import dev.synapse.domain.model.Note
+import dev.synapse.domain.model.NoteMetadata
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -20,6 +20,8 @@ import androidx.compose.ui.input.key.*
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+
+private const val MAX_FILTERED_NOTES = 10
 
 @Composable
 fun BlockPrefix(block: NoteBlock) {
@@ -130,10 +132,10 @@ fun SlashCommandMenu(
     expanded: Boolean,
     onDismiss: () -> Unit,
     onSelect: (String) -> Unit,
-    notes: List<Note> = emptyList(),
+    noteSummaries: List<NoteMetadata> = emptyList(),
     currentNoteId: String = "",
     query: String = "",
-    onLinkSelect: (Note) -> Unit = {}
+    onLinkSelect: (NoteMetadata) -> Unit = {}
 ) {
     DropdownMenu(
         expanded = expanded,
@@ -141,7 +143,7 @@ fun SlashCommandMenu(
         properties = androidx.compose.ui.window.PopupProperties(focusable = false)
     ) {
         SlashMenuContent(
-            notes = notes,
+            noteSummaries = noteSummaries,
             currentNoteId = currentNoteId,
             query = query,
             onSelect = onSelect,
@@ -153,16 +155,16 @@ fun SlashCommandMenu(
 
 @Composable
 private fun SlashMenuContent(
-    notes: List<Note>,
+    noteSummaries: List<NoteMetadata>,
     currentNoteId: String,
     query: String,
     onSelect: (String) -> Unit,
-    onLinkSelect: (Note) -> Unit,
+    onLinkSelect: (NoteMetadata) -> Unit,
     onDismiss: () -> Unit
 ) {
-    val filteredNotes = notes.filter { 
+    val filteredNotes = noteSummaries.filter { 
         it.id != currentNoteId && (query.isEmpty() || it.title.contains(query, ignoreCase = true)) 
-    }.take(10)
+    }.take(MAX_FILTERED_NOTES)
 
     if (query.isEmpty()) {
         DropdownMenuItem(onClick = { onSelect("# ") }) {

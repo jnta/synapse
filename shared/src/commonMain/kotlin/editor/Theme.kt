@@ -5,29 +5,41 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 object SynapseColors {
-    val Background = Color(0xFF0F0F0F)
-    val Surface = Color(0xFF121212)
-    val Panel = Color(0xFF0F0F0F)
-    val Selection = Color(0xFF1E1E1E)
-    val Primary = Color(0xFF1E88E5)
-    val Success = Color(0xFF66BB6A)
-    val Error = Color(0xFFEF5350)
+    val Background = Color(0xFFF9F9FB)
+    val Surface = Color(0xFFF9F9FB)
+    val Panel = Color(0xFFF3F3F5) // Surface Container Low
+    val Selection = Color(0xFFEEEEF0) // Surface Container
+    val Primary = Color(0xFF000000)
+    val OnPrimary = Color(0xFFE2E2E2)
+    val OnSurface = Color(0xFF1A1C1D)
+    val OnSurfaceVariant = Color(0xFF474747)
+    val Success = Color(0xFF4CAF50)
+    val Error = Color(0xFFBA1A1A)
     
-    val PerspectiveCapture = Color(0xFF81D4FA)
-    val PerspectiveReference = Color(0xFFA5D6A7)
-    val PerspectiveSynthesis = Color(0xFFFFCC80)
-    val PerspectiveMap = Color(0xFFCE93D8)
+    val SurfaceContainerLowest = Color(0xFFFFFFFF)
+    val SurfaceContainerLow = Color(0xFFF3F3F5)
+    val SurfaceContainer = Color(0xFFEEEEF0)
+    val SurfaceContainerHigh = Color(0xFFE8E8EA)
+    val SurfaceContainerHighest = Color(0xFFE2E2E4)
+    val OutlineVariant = Color(0xFFC6C6C6)
+
+    val PerspectiveCapture = Color(0xFF000000) // The system is monochromatic
+    val PerspectiveReference = Color(0xFF000000)
+    val PerspectiveSynthesis = Color(0xFF000000)
+    val PerspectiveMap = Color(0xFF000000)
 }
 
 object SynapseDimensions {
-    val LeftNavWidth = 260.dp
-    val ContextPanelWidth = 300.dp
+    val LeftNavWidth = 256.dp // 64 * 4
+    val ContextPanelWidth = 288.dp // 72 * 4
     val MaxEditorWidth = 800.dp
-    val BreadcrumbHorizontalPadding = 24.dp
-    val EditorHorizontalPadding = 32.dp
+    val BreadcrumbHorizontalPadding = 48.dp // 12 * 4
+    val EditorHorizontalPadding = 48.dp // 12 * 4
 }
 
 object SynapseTypography {
-    val BrandLetterSpacing = 4.sp
-    val BrandFontSize = 12.sp
+    val BrandLetterSpacing = 1.2.sp
+    val BrandFontSize = 20.sp
+    val TagFontSize = 10.sp
+    val MetadataFontSize = 11.sp
 }

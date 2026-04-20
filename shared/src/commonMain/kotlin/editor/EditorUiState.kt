@@ -4,6 +4,7 @@ import androidx.compose.runtime.Immutable
 import editor.ast.NoteNode
 import editor.ast.AstParser
 import dev.synapse.domain.model.Note
+import dev.synapse.domain.model.NoteMetadata
 
 
 
@@ -29,6 +30,7 @@ data class EditorUiState(
     val noteId: String = "",
     val isLoading: Boolean = true,
     val notes: List<Note> = emptyList(),
+    val noteSummaries: List<NoteMetadata> = emptyList(),
     val navigationStack: List<String> = emptyList(), // Session Breadcrumbs
     val blocks: List<NoteBlock> = emptyList(),
     val forwardLinks: List<Note> = emptyList(),
@@ -40,6 +42,7 @@ data class EditorUiState(
     val isContextPanelVisible: Boolean = true,
     val showResonanceFilter: Boolean = false,
     val originalThought: String = "",
+    val currentDestination: String = "All Notes",
     val minThoughtLength: Int = 50
 )
 
@@ -61,6 +64,7 @@ sealed interface EditorUiEvent {
     data object ToggleContextPanel : EditorUiEvent
     data object SaveCurrentNote : EditorUiEvent 
     data object TriggerSearch : EditorUiEvent
+    data class NavigateTo(val destination: String) : EditorUiEvent
     
     // Resonance Filter
     data class UpdateOriginalThought(val text: String) : EditorUiEvent

@@ -12,6 +12,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import dev.synapse.domain.model.Note
 import editor.EditorUiState
 import editor.EditorUiEvent
@@ -33,10 +36,14 @@ fun ContextPanel(
     ) {
         // Graph Visualization Placeholder
         Text(
-            text = "GRAPH",
-            style = MaterialTheme.typography.overline,
-            color = Color.Gray.copy(alpha = 0.5f),
-            modifier = Modifier.padding(bottom = 8.dp)
+            text = "Graph Visualization".uppercase(),
+            style = TextStyle(
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 1.sp,
+                color = Color.Gray.copy(alpha = 0.5f)
+            ),
+            modifier = Modifier.padding(bottom = 16.dp)
         )
         
         GraphFocusWidget(
@@ -53,39 +60,51 @@ fun ContextPanel(
         // Forward Links
         if (state.forwardLinks.isNotEmpty()) {
             Text(
-                text = "FORWARD LINKS",
-                style = MaterialTheme.typography.overline,
-                color = Color.Gray.copy(alpha = 0.5f),
-                modifier = Modifier.padding(bottom = 8.dp)
+                text = "Forward Links".uppercase(),
+                style = TextStyle(
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.sp,
+                    color = Color.Gray.copy(alpha = 0.5f)
+                ),
+                modifier = Modifier.padding(bottom = 12.dp)
             )
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.weight(1f)) {
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.weight(1f)) {
                 items(state.forwardLinks) { note ->
                     LinkCard(note, onEvent)
                 }
             }
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(24.dp))
         }
 
         // Back Links
         if (state.backLinks.isNotEmpty()) {
             Text(
-                text = "BACK LINKS",
-                style = MaterialTheme.typography.overline,
-                color = Color.Gray.copy(alpha = 0.5f),
-                modifier = Modifier.padding(bottom = 8.dp)
+                text = "Back Links".uppercase(),
+                style = TextStyle(
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.sp,
+                    color = Color.Gray.copy(alpha = 0.5f)
+                ),
+                modifier = Modifier.padding(bottom = 12.dp)
             )
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.weight(1f)) {
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.weight(1f)) {
                 items(state.backLinks) { note ->
                     LinkCard(note, onEvent)
                 }
             }
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(24.dp))
         }
 
         Text(
-            text = "RESONANCE",
-            style = MaterialTheme.typography.overline,
-            color = Color.Gray.copy(alpha = 0.5f),
+            text = "Resonance".uppercase(),
+            style = TextStyle(
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 1.sp,
+                color = Color.Gray.copy(alpha = 0.5f)
+            ),
             modifier = Modifier.padding(bottom = 16.dp)
         )
         
@@ -107,54 +126,69 @@ fun ContextPanel(
     }
 }
 
+private const val GRAPH_RADIUS = 80f
+private const val NODE_RADIUS = 4f
+private const val CENTER_RADIUS = 20f
+private const val STROKE_WIDTH = 1f
+
 @Composable
 fun GraphFocusWidget(
     forwardLinks: List<Note>,
     backLinks: List<Note>,
     modifier: Modifier = Modifier
 ) {
-    // Placeholder for Phase 4 Canvas visualization
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
         androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
-            // Draw a simple central node and orbiting nodes?
             val center = Offset(size.width / 2, size.height / 2)
-            drawCircle(color = Color.White.copy(alpha = 0.2f), radius = 20f, center = center)
+            drawCircle(color = Color.White.copy(alpha = 0.2f), radius = CENTER_RADIUS, center = center)
             
-            // Draw forward links
             forwardLinks.forEachIndexed { i, _ ->
                 val angle = (i.toFloat() / forwardLinks.size) * kotlin.math.PI
-                val x = center.x + 80 * kotlin.math.cos(angle).toFloat()
-                val y = center.y - 80 * kotlin.math.sin(angle).toFloat()
-                drawLine(color = SynapseColors.Primary.copy(alpha = 0.5f), start = center, end = Offset(x, y), strokeWidth = 2f)
-                drawCircle(color = SynapseColors.Primary, radius = 6f, center = Offset(x, y))
+                val x = center.x + GRAPH_RADIUS * kotlin.math.cos(angle).toFloat()
+                val y = center.y - GRAPH_RADIUS * kotlin.math.sin(angle).toFloat()
+                drawLine(
+                    color = SynapseColors.Primary.copy(alpha = 0.2f),
+                    start = center,
+                    end = Offset(x, y),
+                    strokeWidth = STROKE_WIDTH
+                )
+                drawCircle(color = SynapseColors.Primary, radius = NODE_RADIUS, center = Offset(x, y))
             }
             
-            // Draw back links
             backLinks.forEachIndexed { i, _ ->
                 val angle = (i.toFloat() / backLinks.size) * kotlin.math.PI
-                val x = center.x - 80 * kotlin.math.cos(angle).toFloat()
-                val y = center.y + 80 * kotlin.math.sin(angle).toFloat()
-                drawLine(color = SynapseColors.PerspectiveReference.copy(alpha = 0.5f), start = center, end = Offset(x, y), strokeWidth = 2f)
-                drawCircle(color = SynapseColors.PerspectiveReference, radius = 6f, center = Offset(x, y))
+                val x = center.x - GRAPH_RADIUS * kotlin.math.cos(angle).toFloat()
+                val y = center.y + GRAPH_RADIUS * kotlin.math.sin(angle).toFloat()
+                drawLine(
+                    color = Color.Gray.copy(alpha = 0.2f),
+                    start = center,
+                    end = Offset(x, y),
+                    strokeWidth = STROKE_WIDTH
+                )
+                drawCircle(color = Color.Gray, radius = NODE_RADIUS, center = Offset(x, y))
             }
         }
-        Text("Graph", style = MaterialTheme.typography.caption, color = Color.Gray)
+        Text(
+            text = "Active Context",
+            style = MaterialTheme.typography.caption.copy(fontSize = 9.sp),
+            color = Color.Gray.copy(alpha = 0.5f)
+        )
     }
 }
 
 @Composable
 fun LinkCard(note: Note, onEvent: (EditorUiEvent) -> Unit) {
     Card(
-        backgroundColor = SynapseColors.Surface,
-        shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
-        elevation = 2.dp,
+        backgroundColor = SynapseColors.SurfaceContainerLowest,
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(4.dp),
+        elevation = 0.dp,
         modifier = Modifier.fillMaxWidth().clickable { onEvent(EditorUiEvent.SelectNote(note.id)) }
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
+        Column(modifier = Modifier.padding(16.dp)) {
             Text(
                 text = note.title.ifEmpty { "Untitled" },
-                style = MaterialTheme.typography.subtitle2,
-                color = Color.White
+                style = MaterialTheme.typography.subtitle2.copy(fontWeight = FontWeight.Bold),
+                color = SynapseColors.OnSurface
             )
             
             // Meta-Pills
@@ -166,15 +200,19 @@ fun LinkCard(note: Note, onEvent: (EditorUiEvent) -> Unit) {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     note.attributes.take(3).forEach { attr ->
-                        val pillText = if (attr.key == "tag") "#${attr.value}" else "${attr.key}:${attr.value}"
+                        val pillText = if (attr.key == "tag") {
+                            "#${attr.value.uppercase()}"
+                        } else {
+                            "${attr.key}:${attr.value}"
+                        }
                         Text(
                             text = pillText,
-                            style = MaterialTheme.typography.overline,
-                            color = if (attr.key == "status" && attr.value == "Evergreen") Color(0xFF4CAF50) else SynapseColors.Primary,
+                            style = TextStyle(fontSize = 9.sp, fontWeight = FontWeight.Medium, letterSpacing = 0.5.sp),
+                            color = SynapseColors.OnSurfaceVariant,
                             modifier = Modifier
                                 .background(
-                                    (if (attr.key == "status" && attr.value == "Evergreen") Color(0xFF4CAF50) else SynapseColors.Primary).copy(alpha = 0.1f),
-                                    shape = androidx.compose.foundation.shape.RoundedCornerShape(4.dp)
+                                    SynapseColors.SurfaceContainerHigh,
+                                    shape = androidx.compose.foundation.shape.RoundedCornerShape(2.dp)
                                 )
                                 .padding(horizontal = 4.dp, vertical = 2.dp)
                         )
@@ -188,22 +226,22 @@ fun LinkCard(note: Note, onEvent: (EditorUiEvent) -> Unit) {
 @Composable
 fun ResonanceCard(item: ResonanceItem) {
     Card(
-        backgroundColor = SynapseColors.Surface,
-        shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
-        elevation = 2.dp,
+        backgroundColor = SynapseColors.SurfaceContainerLowest,
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(4.dp),
+        elevation = 0.dp,
         modifier = Modifier.fillMaxWidth()
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
+        Column(modifier = Modifier.padding(16.dp)) {
             Text(
                 text = item.title,
-                style = MaterialTheme.typography.subtitle2,
-                color = Color.White
+                style = MaterialTheme.typography.subtitle2.copy(fontWeight = FontWeight.Bold),
+                color = SynapseColors.OnSurface
             )
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(6.dp))
             Text(
                 text = item.snippet,
                 style = MaterialTheme.typography.caption,
-                color = Color.Gray,
+                color = Color.Gray.copy(alpha = 0.8f),
                 maxLines = 3,
                 overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
             )

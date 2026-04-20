@@ -4,6 +4,7 @@ import app.cash.sqldelight.coroutines.asFlow
 import app.cash.sqldelight.coroutines.mapToList
 import dev.synapse.database.SynapseDatabase
 import dev.synapse.domain.model.Note
+import dev.synapse.domain.model.NoteMetadata
 import dev.synapse.domain.model.Attribute
 import dev.synapse.domain.model.Edge
 import dev.synapse.domain.repository.NoteRepository
@@ -24,6 +25,24 @@ class NoteRepositoryImpl(
             .map { notes ->
                 notes.map { noteEntity ->
                     mapToNote(noteEntity)
+                }
+            }
+    }
+
+    override fun getNoteSummaries(): Flow<List<NoteMetadata>> {
+        return queries.getAllNotes()
+            .asFlow()
+            .mapToList(Dispatchers.IO)
+            .map { notes ->
+                notes.map { noteEntity ->
+                    NoteMetadata(
+                        id = noteEntity.id,
+                        title = noteEntity.title,
+                        snippet = if (noteEntity.content_raw.length > 100) 
+                            noteEntity.content_raw.take(100) + "..." 
+                            else noteEntity.content_raw,
+                        updatedAt = noteEntity.updated_at
+                    )
                 }
             }
     }

@@ -1,29 +1,30 @@
 import androidx.compose.material.MaterialTheme
-import androidx.compose.material.darkColors
-import androidx.compose.ui.graphics.Color
-import editor.SynapseColors
+import androidx.compose.material.lightColors
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import editor.EditorScreen
+import editor.SynapseColors
+import editor.MainScreen
 import editor.EditorViewModel
-
 import dev.synapse.database.DatabaseDriverFactory
 import dev.synapse.database.SynapseDatabase
 import dev.synapse.data.repository.NoteRepositoryImpl
 
 @Composable
 fun App() {
-    val darkColors = darkColors(
+    val lightColors = lightColors(
         primary = SynapseColors.Primary,
+        primaryVariant = SynapseColors.SurfaceContainerHighest,
+        secondary = SynapseColors.Selection,
         background = SynapseColors.Background,
         surface = SynapseColors.Surface,
-        onPrimary = Color.White,
-        onBackground = Color.White,
-        onSurface = Color.White
+        onPrimary = SynapseColors.OnPrimary,
+        onBackground = SynapseColors.OnSurface,
+        onSurface = SynapseColors.OnSurface,
+        error = SynapseColors.Error
     )
 
-    MaterialTheme(colors = darkColors) {
+    MaterialTheme(colors = lightColors) {
         val coroutineScope = rememberCoroutineScope()
         val database = remember { 
             SynapseDatabase(DatabaseDriverFactory().createDriver()) 
@@ -32,7 +33,7 @@ fun App() {
         val resonanceRepository = remember { dev.synapse.di.createResonanceRepository(database) }
         val editorViewModel = remember { EditorViewModel(coroutineScope, noteRepository, resonanceRepository) }
         
-        EditorScreen(editorViewModel)
+        MainScreen(editorViewModel)
     }
 }
 

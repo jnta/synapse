@@ -1,11 +1,18 @@
 package dev.synapse.domain.model
 
+data class NoteMetadata(
+    val id: String,
+    val title: String,
+    val snippet: String,
+    val updatedAt: Long
+)
+
 data class Note(
     val id: String,
     val title: String,
     val content: String,
-    val attributes: List<Attribute>,
-    val connections: List<Edge>,
+    val attributes: List<Attribute> = emptyList(),
+    val connections: List<Edge> = emptyList(),
     val createdAt: Long,
     val updatedAt: Long,
     val viewCount: Int = 0,
