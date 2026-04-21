@@ -88,7 +88,7 @@ object AstParser {
     }
     
     fun extractAttributes(text: String): Map<String, String> {
-        val attrRegex = Regex("\\[(\\w+)::(.*?)\\]")
+        val attrRegex = Regex("\\[([^\\]\\s:]+)::(.*?)\\]")
         val map = mutableMapOf<String, String>()
         attrRegex.findAll(text).forEach { match ->
             map[match.groupValues[1]] = match.groupValues[2]
@@ -97,7 +97,7 @@ object AstParser {
     }
     
     private fun removeAttributes(text: String): String {
-        val attrRegex = Regex("\\[(\\w+)::(.*?)\\]")
+        val attrRegex = Regex("\\[([^\\]\\s:]+)::(.*?)\\]")
         return text.replace(attrRegex, "").trim()
     }
 }
