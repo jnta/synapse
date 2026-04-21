@@ -205,13 +205,15 @@ class EditorViewModel(
             is EditorUiEvent.ToggleContextPanel -> 
                 _state.update { it.copy(isContextPanelVisible = !it.isContextPanelVisible) }
             is EditorUiEvent.ToggleCollectionFilter -> {
-                _state.update { state ->
-                    val newSelected = if (state.selectedCollectionIds.contains(event.collectionId)) {
-                        state.selectedCollectionIds - event.collectionId
-                    } else {
-                        state.selectedCollectionIds + event.collectionId
+                if (_state.value.currentDestination != "Editor") {
+                    _state.update { state ->
+                        val newSelected = if (state.selectedCollectionIds.contains(event.collectionId)) {
+                            state.selectedCollectionIds - event.collectionId
+                        } else {
+                            state.selectedCollectionIds + event.collectionId
+                        }
+                        state.copy(selectedCollectionIds = newSelected)
                     }
-                    state.copy(selectedCollectionIds = newSelected)
                 }
             }
             else -> return false
